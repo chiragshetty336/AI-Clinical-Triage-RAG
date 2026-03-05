@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+
+# Airflow logs
+logs/
+
+# embeddings cache
+data/embeddings_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# environment
+.env

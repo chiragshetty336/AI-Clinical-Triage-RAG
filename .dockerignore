@@ -1,0 +1,10 @@
+logs
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.git
+.gitignore
+data/embeddings_cache

@@ -3,22 +3,27 @@ import requests
 
 def generate_answer(context, question):
     prompt = f"""
-You are a clinical assistant.
+You are an experienced clinical doctor.
 
-Use ONLY the information in context.
+Explain the patient's condition clearly in simple language.
+
+Speak as if you are explaining the case to a junior doctor or nurse.
+
+Avoid unnecessary technical jargon.
 
 Context:
 {context}
 
-Question:
+Patient description:
 {question}
 
 Provide:
-1. Immediate Actions
-2. Possible Causes
-3. Recommended Investigations
-4. Monitoring Plan
-5. Red Flag Signs
+
+1. What is likely happening with the patient
+2. Immediate actions needed
+3. Possible causes
+4. Recommended tests
+5. Warning signs to monitor
 """
 
     response = requests.post(

@@ -5,3 +5,4 @@ numpy
 python-dotenv
 tqdm
 requests
+psycopg2-binary

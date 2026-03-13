@@ -2,33 +2,43 @@ import requests
 
 
 def generate_answer(context, question):
+
     prompt = f"""
-You are an experienced clinical doctor.
+    You are a medical emergency triage assistant.
 
-Explain the patient's condition clearly in simple language.
+    STRICT RULES:
+    - Use ONLY the medical information from the provided context.
+    - DO NOT invent patient details.
+    - DO NOT assume age, gender, or medical history.
+    - DO NOT create fictional scenarios.
+    - If the context does not contain enough information, say:
+    "The guidelines do not provide enough information."
 
-Speak as if you are explaining the case to a junior doctor or nurse.
+    CONTEXT:
+    {context}
 
-Avoid unnecessary technical jargon.
+    PATIENT CASE:
+    {question}
 
-Context:
-{context}
+    Respond in this format:
 
-Patient description:
-{question}
+    Clinical Summary:
+    <Explain the situation based only on the query>
 
-Provide:
+    Recommended Actions:
+    <Immediate medical steps if applicable>
 
-1. What is likely happening with the patient
-2. Immediate actions needed
-3. Possible causes
-4. Recommended tests
-5. Warning signs to monitor
-"""
+    Evidence from Guidelines:
+    <Quote relevant text from context>
+
+    Red Flag Signs:
+    <List dangerous symptoms to monitor>
+    """
 
     response = requests.post(
         "http://host.docker.internal:11434/api/generate",
         json={"model": "phi3:mini", "prompt": prompt, "stream": False},
+        timeout=60,
     )
 
     return response.json()["response"]

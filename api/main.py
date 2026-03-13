@@ -15,9 +15,9 @@ from rag.cache_db import search_cache, store_cache
 app = FastAPI(title="Medical RAG System")
 
 
-# ----------------------------
+# ------------------------------------------------
 # GLOBAL VARIABLES
-# ----------------------------
+# ------------------------------------------------
 index = None
 chunks = []
 metadata = []
@@ -26,44 +26,49 @@ metadata = []
 model = SentenceTransformer(MODEL_NAME)
 
 
-# ----------------------------
+# ------------------------------------------------
 # LOAD INDEX + METADATA
-# ----------------------------
+# ------------------------------------------------
 def load_rag_components():
     global index, chunks, metadata
 
-    if not os.path.exists(INDEX_PATH):
-        print("❌ FAISS index not found. Run ingestion first.")
-        return
+    try:
 
-    print("✅ Loading FAISS index...")
-    index = load_index()
+        if not os.path.exists(INDEX_PATH):
+            print("❌ FAISS index not found. Run ingestion first.")
+            return
 
-    metadata_path = os.path.join(CACHE_PATH, "metadata.pkl")
+        print("✅ Loading FAISS index...")
+        index = load_index()
 
-    if not os.path.exists(metadata_path):
-        print("❌ Metadata file not found.")
-        return
+        metadata_path = os.path.join(CACHE_PATH, "metadata.pkl")
 
-    with open(metadata_path, "rb") as f:
-        metadata_store = pickle.load(f)
+        if not os.path.exists(metadata_path):
+            print("❌ Metadata file not found.")
+            return
 
-    chunks = metadata_store["chunks"]
-    metadata = metadata_store["metadata"]
+        with open(metadata_path, "rb") as f:
+            metadata_store = pickle.load(f)
 
-    print("✅ RAG components loaded successfully.")
+        chunks = metadata_store.get("chunks", [])
+        metadata = metadata_store.get("metadata", [])
+
+        print(f"✅ Loaded {len(chunks)} document chunks.")
+
+    except Exception as e:
+        print("🚨 Failed to load RAG components:", str(e))
 
 
-# Load components when API starts
+# Load components at startup
 load_rag_components()
 
 
-# ----------------------------
+# ------------------------------------------------
 # REQUEST MODEL
-# ----------------------------
+# ------------------------------------------------
 class QueryRequest(BaseModel):
 
-    symptoms: str
+    question: str
 
     heart_rate: int | None = None
     oxygen: int | None = None
@@ -71,97 +76,131 @@ class QueryRequest(BaseModel):
     systolic_bp: int | None = None
 
 
-# ----------------------------
+# ------------------------------------------------
 # MEDICAL QUERY ENDPOINT
-# ----------------------------
+# ------------------------------------------------
 @app.post("/query")
 def query_rag(request: QueryRequest):
 
     if index is None:
         return {"error": "Index not ready. Run Airflow ingestion first."}
 
-    # ------------------------------------------------
-    # 1️⃣ Create query embedding
-    # ------------------------------------------------
-    query_embedding = model.encode([request.symptoms])[0]
+    try:
 
-    # ------------------------------------------------
-    # 2️⃣ Check database cache
-    # ------------------------------------------------
-    cached = search_cache(query_embedding)
+        print("\n🔎 Incoming Query:", request.question)
 
-    if cached:
+        # ------------------------------------------------
+        # 1️⃣ Create query embedding
+        # ------------------------------------------------
+        query_embedding = model.encode([request.question])[0]
 
-        print("⚡ Cache hit")
+        # ------------------------------------------------
+        # 2️⃣ Check semantic cache
+        # ------------------------------------------------
+        cached = search_cache(query_embedding)
 
+        if cached:
+
+            print("⚡ Cache hit")
+
+            return {
+                "triage_level": cached.get("triage_level", "GREEN"),
+                "vital_triage": "UNKNOWN",
+                "admission": "Unknown",
+                "priority": "Cached result",
+                "recommended_action": "Refer to cached answer",
+                "answer": cached.get("answer", ""),
+                "sources": cached.get("sources", []),
+                "confidence_score": None,
+                "faithfulness_score": None,
+                "emergency_detected": False,
+                "safety_flag": False,
+                "cached": True,
+            }
+
+        # ------------------------------------------------
+        # 3️⃣ Vital signs triage
+        # ------------------------------------------------
+        triage_vitals = calculate_vital_triage(
+            heart_rate=request.heart_rate,
+            oxygen=request.oxygen,
+            temperature=request.temperature,
+            systolic_bp=request.systolic_bp,
+        )
+
+        # ------------------------------------------------
+        # 4️⃣ Run RAG pipeline
+        # ------------------------------------------------
+        result = medical_agent(request.question, index, chunks, metadata)
+
+        if result is None:
+            return {"error": "RAG pipeline failed."}
+
+        # ------------------------------------------------
+        # 5️⃣ Override triage if vitals critical
+        # ------------------------------------------------
+        if triage_vitals == "RED":
+            result["triage_level"] = "RED"
+            result["admission"] = "ICU"
+            result["priority"] = "Immediate life-saving intervention required"
+            result["recommended_action"] = (
+                "Stabilize airway, breathing, circulation immediately"
+            )
+
+        # ------------------------------------------------
+        # 6️⃣ Store in semantic cache
+        # ------------------------------------------------
+        store_cache(
+            request.question,
+            query_embedding,
+            result.get("answer", ""),
+            result.get("triage_level", "GREEN"),
+            result.get("sources", []),
+        )
+
+        # ------------------------------------------------
+        # 7️⃣ Return response
+        # ------------------------------------------------
         return {
-            "triage_level": cached["triage_level"],
-            "answer": cached["answer"],
-            "sources": cached["sources"],
-            "cached": True,
+            "triage_level": result.get("triage_level", "GREEN"),
+            "vital_triage": triage_vitals,
+            "admission": result.get("admission", "Unknown"),
+            "priority": result.get("priority", "Unknown"),
+            "recommended_action": result.get(
+                "recommended_action", "Follow clinical guidelines"
+            ),
+            "answer": result.get("answer", ""),
+            "sources": result.get("sources", [])[:3],
+            "confidence_score": round(result.get("confidence", 0), 3),
+            "faithfulness_score": result.get("faithfulness", 0),
+            "emergency_detected": result.get("emergency", False),
+            "safety_flag": result.get("safety_flag", False),
+            "cached": False,
         }
 
-    # ------------------------------------------------
-    # 3️⃣ Vital signs triage
-    # ------------------------------------------------
-    triage_vitals = calculate_vital_triage(
-        heart_rate=request.heart_rate,
-        oxygen=request.oxygen,
-        temperature=request.temperature,
-        systolic_bp=request.systolic_bp,
-    )
+    except Exception as e:
 
-    # ------------------------------------------------
-    # 4️⃣ Run RAG
-    # ------------------------------------------------
-    result = medical_agent(request.symptoms, index, chunks, metadata)
+        print("\n🚨 API ERROR:", str(e))
 
-    # ------------------------------------------------
-    # 5️⃣ Override triage if vitals critical
-    # ------------------------------------------------
-    if triage_vitals == "RED":
-        result["triage_level"] = "RED"
-
-    # ------------------------------------------------
-    # 6️⃣ Store result in DB cache
-    # ------------------------------------------------
-    store_cache(
-        request.symptoms,
-        query_embedding,
-        result["answer"],
-        result["triage_level"],
-        result["sources"],
-    )
-
-    # ------------------------------------------------
-    # 7️⃣ Return response
-    # ------------------------------------------------
-    return {
-        "triage_level": result["triage_level"],
-        "vital_triage": triage_vitals,
-        "answer": result["answer"],
-        "sources": result["sources"][:3],
-        "confidence_score": round(result["confidence"], 3),
-        "faithfulness_score": result["faithfulness"],
-        "emergency_detected": result["emergency"],
-        "safety_flag": result["safety_flag"],
-        "cached": False,
-    }
+        return {"error": str(e)}
 
 
-# ----------------------------
+# ------------------------------------------------
 # AIRFLOW LOG ANALYZER
-# ----------------------------
+# ------------------------------------------------
+
 AIRFLOW_LOGS_PATH = "/opt/airflow/logs"
 
 
 def get_latest_log_file():
+
     latest_log = None
     latest_time = 0
 
     for root, dirs, files in os.walk(AIRFLOW_LOGS_PATH):
         for file in files:
             if file.endswith(".log"):
+
                 full_path = os.path.join(root, file)
                 modified_time = os.path.getmtime(full_path)
 
@@ -189,14 +228,12 @@ You are a DevOps and Airflow expert.
 
 Analyze the following Airflow task failure log.
 
-1. Identify the root cause.
-2. Explain it simply.
-3. Provide exact steps to fix it.
+1. Identify the root cause
+2. Explain it simply
+3. Provide exact steps to fix it
 
 LOG:
-------------------
 {error_text}
-------------------
 """
 
     response = requests.post(
@@ -210,19 +247,25 @@ LOG:
 @app.get("/analyze-dag")
 def analyze_dag():
 
-    latest_log = get_latest_log_file()
+    try:
 
-    if not latest_log:
-        return {"error": "No log files found."}
+        latest_log = get_latest_log_file()
 
-    with open(latest_log, "r", encoding="utf-8", errors="ignore") as f:
-        log_text = f.read()
+        if not latest_log:
+            return {"error": "No log files found."}
 
-    error_section = extract_error_section(log_text)
+        with open(latest_log, "r", encoding="utf-8", errors="ignore") as f:
+            log_text = f.read()
 
-    analysis = analyze_log_with_llm(error_section)
+        error_section = extract_error_section(log_text)
 
-    return {
-        "log_file": latest_log,
-        "analysis": analysis,
-    }
+        analysis = analyze_log_with_llm(error_section)
+
+        return {
+            "log_file": latest_log,
+            "analysis": analysis,
+        }
+
+    except Exception as e:
+
+        return {"error": str(e)}

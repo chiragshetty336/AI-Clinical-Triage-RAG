@@ -1,11 +1,18 @@
-def calculate_faithfulness(answer, context):
-    answer_words = set(answer.lower().split())
-    context_words = set(context.lower().split())
+from sentence_transformers import SentenceTransformer, util
 
-    if len(answer_words) == 0:
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+
+def calculate_faithfulness(answer, context):
+
+    if not answer or not context:
         return 0
 
-    overlap = answer_words.intersection(context_words)
-    faithfulness = len(overlap) / len(answer_words)
+    answer_embedding = model.encode(answer, convert_to_tensor=True)
+    context_embedding = model.encode(context, convert_to_tensor=True)
 
-    return round(faithfulness * 100, 2)
+    similarity = util.cos_sim(answer_embedding, context_embedding)
+
+    score = float(similarity[0][0])
+
+    return round(score * 100, 2)

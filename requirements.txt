@@ -5,4 +5,8 @@ numpy
 python-dotenv
 tqdm
 requests
+torch
+rank-bm25
+fastapi
+uvicorn
 psycopg2-binary

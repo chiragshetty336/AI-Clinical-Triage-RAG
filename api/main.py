@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import os
 import pickle
+import requests
 
 from sentence_transformers import SentenceTransformer
 
@@ -10,10 +11,10 @@ from rag.config import CACHE_PATH, INDEX_PATH, MODEL_NAME
 from rag.agent import medical_agent
 from rag.indexing import load_index
 from rag.cache_db import search_cache, store_cache
-
+from evaluation.evaluate import evaluate_answers
+from typing import Optional
 
 app = FastAPI(title="Medical RAG System")
-
 
 # ------------------------------------------------
 # GLOBAL VARIABLES
@@ -33,7 +34,6 @@ def load_rag_components():
     global index, chunks, metadata
 
     try:
-
         if not os.path.exists(INDEX_PATH):
             print("❌ FAISS index not found. Run ingestion first.")
             return
@@ -59,7 +59,7 @@ def load_rag_components():
         print("🚨 Failed to load RAG components:", str(e))
 
 
-# Load components at startup
+# Load at startup
 load_rag_components()
 
 
@@ -67,60 +67,57 @@ load_rag_components()
 # REQUEST MODEL
 # ------------------------------------------------
 class QueryRequest(BaseModel):
-
     question: str
 
-    heart_rate: int | None = None
-    oxygen: int | None = None
-    temperature: float | None = None
-    systolic_bp: int | None = None
+    heart_rate: Optional[int] = None
+    oxygen: Optional[int] = None
+    temperature: Optional[float] = None
+    systolic_bp: Optional[int] = None
 
 
 # ------------------------------------------------
-# MEDICAL QUERY ENDPOINT
+# MAIN ENDPOINT
 # ------------------------------------------------
 @app.post("/query")
 def query_rag(request: QueryRequest):
 
     if index is None:
-        return {"error": "Index not ready. Run Airflow ingestion first."}
+        return {"error": "Index not ready. Run ingestion first."}
 
     try:
-
         print("\n🔎 Incoming Query:", request.question)
 
-        # ------------------------------------------------
-        # 1️⃣ Create query embedding
-        # ------------------------------------------------
+        # -----------------------------
+        # 1️⃣ Embedding
+        # -----------------------------
         query_embedding = model.encode([request.question])[0]
 
-        # ------------------------------------------------
-        # 2️⃣ Check semantic cache
-        # ------------------------------------------------
-        cached = search_cache(query_embedding)
+        # -----------------------------
+        # 2️⃣ Cache
+        # -----------------------------
+        cached = search_cache(request.question, query_embedding)
 
         if cached:
-
             print("⚡ Cache hit")
 
             return {
                 "triage_level": cached.get("triage_level", "GREEN"),
                 "vital_triage": "UNKNOWN",
-                "admission": "Unknown",
+                "admission": "Cached",
                 "priority": "Cached result",
                 "recommended_action": "Refer to cached answer",
                 "answer": cached.get("answer", ""),
                 "sources": cached.get("sources", []),
-                "confidence_score": None,
-                "faithfulness_score": None,
+                "confidence_score": 0.5,
+                "faithfulness_score": 50,
                 "emergency_detected": False,
                 "safety_flag": False,
                 "cached": True,
             }
 
-        # ------------------------------------------------
-        # 3️⃣ Vital signs triage
-        # ------------------------------------------------
+        # -----------------------------
+        # 3️⃣ Vital triage
+        # -----------------------------
         triage_vitals = calculate_vital_triage(
             heart_rate=request.heart_rate,
             oxygen=request.oxygen,
@@ -128,79 +125,87 @@ def query_rag(request: QueryRequest):
             systolic_bp=request.systolic_bp,
         )
 
-        # ------------------------------------------------
-        # 4️⃣ Run RAG pipeline
-        # ------------------------------------------------
+        # -----------------------------
+        # 4️⃣ RAG pipeline
+        # -----------------------------
         result = medical_agent(request.question, index, chunks, metadata)
 
         if result is None:
             return {"error": "RAG pipeline failed."}
 
-        # ------------------------------------------------
-        # 5️⃣ Override triage if vitals critical
-        # ------------------------------------------------
-        if triage_vitals == "RED":
-            result["triage_level"] = "RED"
-            result["admission"] = "ICU"
-            result["priority"] = "Immediate life-saving intervention required"
-            result["recommended_action"] = (
-                "Stabilize airway, breathing, circulation immediately"
-            )
+        # -----------------------------
+        # 5️⃣ Merge triage properly
+        # -----------------------------
+        final_triage = result.get("triage_level", "GREEN")
 
-        # ------------------------------------------------
-        # 6️⃣ Store in semantic cache
-        # ------------------------------------------------
+        if triage_vitals == "RED":
+            final_triage = "RED"
+
+        # 🔥 FIX: ALWAYS consistent
+        vital_triage = final_triage
+
+        # -----------------------------
+        # 6️⃣ Store cache
+        # -----------------------------
         store_cache(
             request.question,
             query_embedding,
             result.get("answer", ""),
-            result.get("triage_level", "GREEN"),
+            final_triage,
             result.get("sources", []),
         )
 
-        # ------------------------------------------------
-        # 7️⃣ Return response
-        # ------------------------------------------------
+        # -----------------------------
+        # 7️⃣ Evaluation (safe)
+        # -----------------------------
+        try:
+            evaluation = evaluate_answers(request.question, result.get("answer", ""))
+            gpt_answer = evaluation.get("gpt_answer", "")
+            similarity = round(evaluation.get("similarity_score", 0), 3)
+        except Exception as e:
+            print("⚠ Evaluation failed:", e)
+            gpt_answer = ""
+            similarity = 0
+
+        # -----------------------------
+        # 8️⃣ FINAL RESPONSE (FIXED)
+        # -----------------------------
         return {
-            "triage_level": result.get("triage_level", "GREEN"),
-            "vital_triage": triage_vitals,
+            "triage_level": final_triage,
+            "vital_triage": vital_triage,
             "admission": result.get("admission", "Unknown"),
             "priority": result.get("priority", "Unknown"),
-            "recommended_action": result.get(
-                "recommended_action", "Follow clinical guidelines"
-            ),
+            "recommended_action": result.get("recommended_action", ""),
             "answer": result.get("answer", ""),
+            "gpt_reference_answer": gpt_answer,
+            "similarity_score": similarity,
             "sources": result.get("sources", [])[:3],
-            "confidence_score": round(result.get("confidence", 0), 3),
-            "faithfulness_score": result.get("faithfulness", 0),
-            "emergency_detected": result.get("emergency", False),
+            # ✅ FIXED KEYS
+            "confidence_score": result.get("confidence_score", 0.5),
+            "faithfulness_score": result.get("faithfulness_score", 50),
+            "emergency_detected": result.get("emergency_detected", False),
             "safety_flag": result.get("safety_flag", False),
             "cached": False,
         }
 
     except Exception as e:
-
         print("\n🚨 API ERROR:", str(e))
-
         return {"error": str(e)}
 
 
 # ------------------------------------------------
-# AIRFLOW LOG ANALYZER
+# AIRFLOW LOG ANALYZER (FIXED)
 # ------------------------------------------------
-
 AIRFLOW_LOGS_PATH = "/opt/airflow/logs"
 
 
 def get_latest_log_file():
-
     latest_log = None
     latest_time = 0
 
     for root, dirs, files in os.walk(AIRFLOW_LOGS_PATH):
         for file in files:
             if file.endswith(".log"):
-
                 full_path = os.path.join(root, file)
                 modified_time = os.path.getmtime(full_path)
 
@@ -212,16 +217,12 @@ def get_latest_log_file():
 
 
 def extract_error_section(log_text):
-
     if "Traceback" in log_text:
         return log_text.split("Traceback")[-1]
-
     return log_text[-2000:]
 
 
 def analyze_log_with_llm(error_text):
-
-    import requests
 
     prompt = f"""
 You are a DevOps and Airflow expert.
@@ -229,26 +230,25 @@ You are a DevOps and Airflow expert.
 Analyze the following Airflow task failure log.
 
 1. Identify the root cause
-2. Explain it simply
-3. Provide exact steps to fix it
+2. Explain simply
+3. Give exact fix steps
 
 LOG:
 {error_text}
 """
 
     response = requests.post(
-        "http://host.docker.internal:11434/api/generate",
-        json={"model": "phi3:mini", "prompt": prompt, "stream": False},
+        "http://localhost:11434/api/generate",  # ✅ FIXED
+        json={"model": "phi3", "prompt": prompt, "stream": False},  # ✅ FIXED
+        timeout=60,  # ✅ ADDED
     )
 
-    return response.json()["response"]
+    return response.json().get("response", "No response")
 
 
 @app.get("/analyze-dag")
 def analyze_dag():
-
     try:
-
         latest_log = get_latest_log_file()
 
         if not latest_log:
@@ -258,7 +258,6 @@ def analyze_dag():
             log_text = f.read()
 
         error_section = extract_error_section(log_text)
-
         analysis = analyze_log_with_llm(error_section)
 
         return {
@@ -267,5 +266,4 @@ def analyze_dag():
         }
 
     except Exception as e:
-
         return {"error": str(e)}

@@ -1,0 +1,31 @@
+[
+  {
+    "query": "patient severe chest pain sweating",
+    "heart_rate": 120,
+    "oxygen": 88,
+    "temperature": 37.5,
+    "systolic_bp": 85,
+    "expected_triage": "RED",
+    "ground_truth": "Possible acute coronary syndrome requiring immediate emergency care"
+  },
+
+  {
+    "query": "patient unconscious and not breathing",
+    "heart_rate": 0,
+    "oxygen": 70,
+    "temperature": 36.8,
+    "systolic_bp": 60,
+    "expected_triage": "RED",
+    "ground_truth": "Cardiac arrest suspected requiring immediate CPR and emergency response"
+  },
+
+  {
+    "query": "patient mild fever and cough",
+    "heart_rate": 90,
+    "oxygen": 97,
+    "temperature": 38.1,
+    "systolic_bp": 120,
+    "expected_triage": "GREEN",
+    "ground_truth": "Mild infection likely requiring routine medical evaluation"
+  }
+]

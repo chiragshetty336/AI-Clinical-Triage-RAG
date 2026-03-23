@@ -3,30 +3,55 @@ import requests
 
 def classify_triage(query):
 
+    query_lower = query.lower()
+
+    # 🔥 STRONG RULE-BASED TRIAGE
+
+    # RED (life-threatening)
+    if any(
+        x in query_lower
+        for x in [
+            "unconscious",
+            "not breathing",
+            "severe chest pain",
+            "shortness of breath",
+            "cannot breathe",
+            "severe bleeding",
+        ]
+    ):
+        return "RED"
+
+    # YELLOW (urgent)
+    if any(
+        x in query_lower
+        for x in ["moderate pain", "persistent fever", "vomiting", "infection"]
+    ):
+        return "YELLOW"
+
+    # GREEN (minor)
+    if any(
+        x in query_lower for x in ["mild fever", "mild pain", "small cut", "headache"]
+    ):
+        return "GREEN"
+
+    # ------------------------------
+    # LLM fallback (RARE USE)
+    # ------------------------------
     prompt = f"""
-You are an emergency department triage assistant.
+Classify into ONE: RED, YELLOW, GREEN.
 
-Classify the patient condition into ONE category:
-
-RED - Life threatening (cardiac arrest, severe breathing distress, shock, unconscious)
-
-YELLOW - Urgent but stable (infection, moderate pain, abnormal vitals)
-
-GREEN - Minor / informational
-
-Return ONLY one word: RED, YELLOW, or GREEN.
-
-Patient description:
+Patient:
 {query}
 """
 
     try:
         response = requests.post(
-            "http://host.docker.internal:11434/api/generate",
-            json={"model": "phi3:mini", "prompt": prompt, "stream": False},
+            "http://localhost:11434/api/generate",
+            json={"model": "mistral:7b", "prompt": prompt, "stream": False},
+            timeout=60,
         )
 
-        result = response.json()["response"].strip().upper()
+        result = response.json().get("response", "").strip().upper()
 
         if "RED" in result:
             return "RED"
@@ -35,5 +60,6 @@ Patient description:
         else:
             return "GREEN"
 
-    except:
+    except Exception as e:
+        print("⚠ Triage fallback error:", e)
         return "YELLOW"

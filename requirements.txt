@@ -10,3 +10,6 @@ rank-bm25
 fastapi
 uvicorn
 psycopg2-binary
+scikit-learn
+python-dotenv
+google-generativeai

@@ -1,71 +1,85 @@
+import os
+import pickle
 import numpy as np
-import json
-from rag.db import get_connection
+from sentence_transformers import SentenceTransformer
 
-SIMILARITY_THRESHOLD = 0.85
+# File to store cache
+CACHE_FILE = "data/faq_cache.pkl"
+
+# Embedding model
+model = SentenceTransformer("pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb")
 
 
-def search_cache(query_embedding):
+# Load cache from file
+def load_cache():
+    if not os.path.exists(CACHE_FILE):
+        return []
 
-    conn = get_connection()
-    cur = conn.cursor()
+    with open(CACHE_FILE, "rb") as f:
+        return pickle.load(f)
 
-    cur.execute(
-        """
-        SELECT query, embedding, answer, triage_level, sources
-        FROM faq_cache
-        """
-    )
 
-    rows = cur.fetchall()
+# Save cache to file
+def save_cache(data):
+    os.makedirs("data", exist_ok=True)
 
-    best_match = None
+    with open(CACHE_FILE, "wb") as f:
+        pickle.dump(data, f)
+
+
+# ✅ FIXED search function (NO ERROR NOW)
+def search_cache(query, context=None, threshold=0.85):
+    cache = load_cache()
+
+    if len(cache) == 0:
+        return None
+
+    # Convert query to embedding
+    query_emb = model.encode([query])[0]
+
     best_score = 0
+    best_item = None
 
-    for row in rows:
+    # Find best match
+    for item in cache:
+        stored_emb = np.array(item["embedding"])
 
-        stored_embedding = np.array(row[1])
+        # ✅ SAFETY CHECK
+        if stored_emb.shape != query_emb.shape:
+            continue
 
-        similarity = np.dot(query_embedding, stored_embedding) / (
-            np.linalg.norm(query_embedding) * np.linalg.norm(stored_embedding)
-        )
+        score = np.dot(query_emb, stored_emb)
 
-        if similarity > best_score:
-            best_score = similarity
-            best_match = row
+        if score > best_score:
+            best_score = score
+            best_item = item
 
-    cur.close()
-    conn.close()
-
-    if best_match and best_score > SIMILARITY_THRESHOLD:
-
-        return {
-            "query": best_match[0],
-            "answer": best_match[2],
-            "triage_level": best_match[3],
-            "sources": best_match[4],
-        }
+    # Return only if above threshold
+    if best_score > threshold:
+        print("⚡ FAQ cache hit")
+        return best_item
 
     return None
 
 
-def store_cache(query, embedding, answer, triage_level, sources):
+# Store new result in cache
+def store_cache(query, answer, triage_level, sources, embedding=None):
+    cache = load_cache()
 
-    conn = get_connection()
-    cur = conn.cursor()
+    # If embedding is not provided, generate it
+    if embedding is None:
+        emb = model.encode([query])[0].tolist()
+    else:
+        emb = embedding
 
-    cur.execute(
-        """
-        INSERT INTO faq_cache (query, embedding, answer, triage_level, sources)
-        VALUES (%s,%s,%s,%s,%s)
-        """,
-        (
-            query,
-            embedding.tolist(),
-            answer,
-            triage_level,
-            json.dumps(sources),
-        ),
+    cache.append(
+        {
+            "query": query,
+            "embedding": emb,
+            "answer": answer,
+            "triage_level": triage_level,
+            "sources": sources,
+        }
     )
 
-    conn.commit()
+    save_cache(cache)

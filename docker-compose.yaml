@@ -53,6 +53,9 @@ services:
     volumes:
       - .:/app
       - ./logs:/opt/airflow/logs
+    env_file:
+      - .env
 
 volumes:
   postgres_db:
+

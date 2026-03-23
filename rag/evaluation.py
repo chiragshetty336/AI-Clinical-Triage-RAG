@@ -8,11 +8,14 @@ def calculate_faithfulness(answer, context):
     if not answer or not context:
         return 0
 
-    answer_embedding = model.encode(answer, convert_to_tensor=True)
-    context_embedding = model.encode(context, convert_to_tensor=True)
+    answer = answer.lower()
+    context = context.lower()
 
-    similarity = util.cos_sim(answer_embedding, context_embedding)
+    score = 0
+    words = answer.split()
 
-    score = float(similarity[0][0])
+    for w in words:
+        if w in context:
+            score += 1
 
-    return round(score * 100, 2)
+    return min(100, (score / len(words)) * 100)

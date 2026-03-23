@@ -26,13 +26,15 @@ def main():
         print(result["answer"])
         print("\n===================================================\n")
 
-        print(f"\nConfidence Score: {round(result['confidence'],3)}")
-        print(f"Faithfulness Score: {round(result['faithfulness'],2)}%")
+        # ✅ FIXED KEYS
+        print(f"\nConfidence Score: {round(result['confidence_score'],3)}")
+        print(f"Faithfulness Score: {round(result['faithfulness_score'],2)}%")
 
         if result["safety_flag"]:
             print("⚠ WARNING: Low grounding detected.")
 
-        if result["emergency"]:
+        # ✅ FIXED KEY
+        if result["emergency_detected"]:
             print("🚨 Emergency scenario detected.")
 
         print("\nSources Used:")

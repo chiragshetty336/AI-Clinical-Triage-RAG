@@ -3,42 +3,64 @@ import requests
 
 def generate_answer(context, question):
 
+    # 🔥 LIMIT CONTEXT SIZE
+    context = context[:2000]
+
     prompt = f"""
-    You are a medical emergency triage assistant.
+You are a medical triage assistant.
 
-    STRICT RULES:
-    - Use ONLY the medical information from the provided context.
-    - DO NOT invent patient details.
-    - DO NOT assume age, gender, or medical history.
-    - DO NOT create fictional scenarios.
-    - If the context does not contain enough information, say:
-    "The guidelines do not provide enough information."
+RULES:
+- Use the provided context as PRIMARY source.
+- You may use basic medical reasoning ONLY if it is directly related to the situation.
+- DO NOT introduce unrelated conditions.
+- Do NOT contradict the given triage level.
+- DO NOT cite external guidelines unless present in context.
+- If context is missing details, give safe general emergency advice.
 
-    CONTEXT:
-    {context}
+-----------------------
+CONTEXT:
+{context}
+-----------------------
 
-    PATIENT CASE:
-    {question}
+PATIENT:
+{question}
 
-    Respond in this format:
+-----------------------
+OUTPUT FORMAT:
 
-    Clinical Summary:
-    <Explain the situation based only on the query>
+Clinical Summary:
+- Describe the situation.
 
-    Recommended Actions:
-    <Immediate medical steps if applicable>
+Recommended Actions:
+- Use context-supported actions.
+- Add basic emergency care steps if obvious (e.g., trauma → check airway, bleeding).
 
-    Evidence from Guidelines:
-    <Quote relevant text from context>
+Evidence:
+- Quote from context if available.
 
-    Red Flag Signs:
-    <List dangerous symptoms to monitor>
-    """
+Red Flags:
+- Mention serious warning signs relevant to situation.
+"""
 
-    response = requests.post(
-        "http://host.docker.internal:11434/api/generate",
-        json={"model": "phi3:mini", "prompt": prompt, "stream": False},
-        timeout=60,
-    )
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={"model": "mistral:7b", "prompt": prompt, "stream": False},
+            timeout=300,
+        )
 
-    return response.json()["response"]
+        if response.status_code != 200:
+            return f"⚠ API Error: {response.text}"
+
+        data = response.json()
+
+        answer = data.get("response", "").strip()
+
+        if not answer:
+            return "⚠ Empty response from model"
+
+        return answer
+
+    except Exception as e:
+        print("❌ Generation error:", e)
+        return "⚠ Error generating medical response. Please try again."

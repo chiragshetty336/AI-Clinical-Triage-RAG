@@ -6,7 +6,7 @@ from sentence_transformers import SentenceTransformer
 model = SentenceTransformer(MODEL_NAME)
 
 
-def search(query, index, chunks, metadata, top_k=10):
+def search(query, index, chunks, metadata, top_k=5):
 
     q_embedding = model.encode([query]).astype("float32")
     faiss.normalize_L2(q_embedding)

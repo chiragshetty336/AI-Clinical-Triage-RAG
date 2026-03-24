@@ -1,11 +1,14 @@
 import requests
+from torchgen import context
 
+from rag.self_reflection import reflect_and_improve
 from rag.triage import classify_triage
 from rag.reranker import MedicalReranker
 from rag.clinical_decision import admission_decision
 from rag.hybrid_retrieval import HybridRetriever
 from rag.generation import generate_answer
 from rag.evaluation import calculate_faithfulness
+from rag.self_reflection import reflect_and_improve
 
 reranker = MedicalReranker()
 retriever = None
@@ -132,7 +135,11 @@ def medical_agent(query, index, chunks, metadata):
     print(context[:500])
     print("=======================\n")
 
+    # Step 1: generate answer
     answer = generate_answer(context, query)
+
+    # Step 2: improve answer
+    answer = reflect_and_improve(answer, context, query)
 
     # ✅ SAFE FAITHFULNESS
     try:

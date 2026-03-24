@@ -4,8 +4,74 @@ import numpy as np
 import pickle
 import faiss
 from rag.config import DATA_PATH, CACHE_PATH, MODEL_NAME
+from sentence_transformers import SentenceTransformer
 
 
+# =========================
+# 🔥 CLEANING FUNCTION
+# =========================
+def clean_chunk(text: str):
+    text_lower = text.lower()
+
+    if len(text.split()) < 40:
+        return None
+
+    # ❌ REMOVE TRIAGE / TRAINING CONTENT (CRITICAL)
+    bad_keywords = [
+        "triage",
+        "esi",
+        "emergency severity index",
+        "etat",
+        "module",
+        "airway and breathing practice",
+        "learning objectives",
+    ]
+
+    if any(k in text_lower for k in bad_keywords):
+        return None
+
+    # ❌ REMOVE PROCEDURAL TEXT
+    if any(
+        k in text_lower
+        for k in ["procedure", "technique", "step", "practice", "equipment"]
+    ):
+        return None
+
+    # ✅ FORCE CLINICAL CONTENT
+    must_have = [
+        "diagnosis",
+        "treatment",
+        "management",
+        "symptoms",
+        "causes",
+        "clinical",
+        "syndrome",
+        "disease",
+    ]
+
+    if not any(k in text_lower for k in must_have):
+        return None
+
+    return text.strip()
+
+
+# =========================
+# 🔥 BETTER CHUNKING
+# =========================
+def chunk_text(text, max_words=120):  # 🔥 reduced size
+    words = text.split()
+    chunks = []
+
+    for i in range(0, len(words), max_words):
+        chunk = " ".join(words[i : i + max_words])
+        chunks.append(chunk)
+
+    return chunks
+
+
+# =========================
+# PDF EXTRACTION
+# =========================
 def extract_text_from_pdf(pdf_path):
     pages_data = []
     try:
@@ -19,27 +85,10 @@ def extract_text_from_pdf(pdf_path):
     return pages_data
 
 
-def chunk_text(text, max_words=300):
-    paragraphs = text.split("\n")
-    chunks = []
-    current_chunk = ""
-
-    for para in paragraphs:
-        if len((current_chunk + " " + para).split()) < max_words:
-            current_chunk += " " + para
-        else:
-            if current_chunk.strip():
-                chunks.append(current_chunk.strip())
-            current_chunk = para
-
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-
-    return chunks
-
-
+# =========================
+# MAIN INGESTION
+# =========================
 def load_pdfs_with_cache():
-    from sentence_transformers import SentenceTransformer
 
     print("📂 Starting document ingestion...")
 
@@ -53,74 +102,52 @@ def load_pdfs_with_cache():
 
     for file in os.listdir(DATA_PATH):
         if file.lower().endswith(".pdf"):
+
             path = os.path.join(DATA_PATH, file)
-            cache_file = os.path.join(CACHE_PATH, file + ".pkl")
+            print(f"Processing: {file}")
 
-            if os.path.exists(cache_file):
-                print(f"Loading cache for: {file}")
-                with open(cache_file, "rb") as f:
-                    cached_data = pickle.load(f)
+            pages = extract_text_from_pdf(path)
 
-                all_chunks.extend(cached_data["chunks"])
-                all_embeddings.extend(cached_data["embeddings"])
-                metadata.extend(cached_data["metadata"])
+            for page_number, page_text in pages:
 
-            else:
-                print(f"Processing new file: {file}")
+                chunks = chunk_text(page_text)
 
-                pages = extract_text_from_pdf(path)
+                for chunk in chunks:
+                    cleaned = clean_chunk(chunk)
 
-                file_chunks = []
-                file_metadata = []
+                    if cleaned:
+                        all_chunks.append(cleaned)
+                        metadata.append({"source": file, "page": page_number})
 
-                for page_number, page_text in pages:
-                    chunks = chunk_text(page_text)
-                    for chunk in chunks:
-                        file_chunks.append(chunk)
-                        file_metadata.append({"source": file, "page": page_number})
+    print(f"✅ Clean chunks: {len(all_chunks)}")
 
-                if file_chunks:
-                    embeddings = model.encode(file_chunks, show_progress_bar=True)
-                    embeddings = np.array(embeddings).astype("float32")
+    # =========================
+    # EMBEDDINGS
+    # =========================
+    embeddings = model.encode(all_chunks, show_progress_bar=True)
+    embeddings = np.array(embeddings).astype("float32")
 
-                    with open(cache_file, "wb") as f:
-                        pickle.dump(
-                            {
-                                "chunks": file_chunks,
-                                "embeddings": embeddings,
-                                "metadata": file_metadata,
-                            },
-                            f,
-                        )
+    # Normalize embeddings (🔥 important)
+    faiss.normalize_L2(embeddings)
 
-                    all_chunks.extend(file_chunks)
-                    all_embeddings.extend(embeddings)
-                    metadata.extend(file_metadata)
+    # =========================
+    # FAISS INDEX
+    # =========================
+    dimension = embeddings.shape[1]
 
-    # -------------------------
-    # 🔥 CREATE FAISS INDEX
-    # -------------------------
+    index = faiss.IndexFlatIP(dimension)  # 🔥 changed to cosine similarity
+    index.add(embeddings)
 
-    all_embeddings = np.array(all_embeddings).astype("float32")
-
-    dimension = all_embeddings.shape[1]
-
-    index = faiss.IndexFlatL2(dimension)
-    index.add(all_embeddings)
-
-    # Save FAISS index
     faiss.write_index(index, os.path.join(CACHE_PATH, "medical_faiss.index"))
 
-    # Save metadata separately
+    # Save metadata
     with open(os.path.join(CACHE_PATH, "metadata.pkl"), "wb") as f:
-        pickle.dump(
-            {
-                "chunks": all_chunks,
-                "metadata": metadata,
-            },
-            f,
-        )
+        pickle.dump({"chunks": all_chunks, "metadata": metadata}, f)
 
-    print(f"✅ Stored {len(all_chunks)} chunks in FAISS")
+    print(f"✅ Stored {len(all_chunks)} clean chunks")
 
     return f"Ingestion completed. {len(all_chunks)} chunks stored."
+
+
+if __name__ == "__main__":
+    load_pdfs_with_cache()

@@ -3,49 +3,69 @@ import requests
 
 def generate_answer(context, question):
 
-    # 🔥 LIMIT CONTEXT SIZE
-    context = context[:2000]
+    # 🔥 LIMIT CONTEXT SIZE (keep only useful part)
+    context = context[:1500]
 
     prompt = f"""
-You are a medical triage assistant.
+You are a medical triage assistant helping a normal person.
 
-RULES:
-- Use the provided context as PRIMARY source.
-- You may use basic medical reasoning ONLY if it is directly related to the situation.
-- DO NOT introduce unrelated conditions.
-- Do NOT contradict the given triage level.
-- DO NOT cite external guidelines unless present in context.
-- If context is missing details, give safe general emergency advice.
+Your job is to give:
+- SIMPLE
+- CLEAR
+- EASY TO UNDERSTAND answers
+
+IMPORTANT RULES:
+- Do NOT use complex medical terms
+- Do NOT copy raw text from context
+- Explain in plain English
+- Be calm and direct
 
 -----------------------
 CONTEXT:
 {context}
 -----------------------
 
-PATIENT:
+PATIENT QUERY:
 {question}
 
 -----------------------
-OUTPUT FORMAT:
 
-Clinical Summary:
-- Describe the situation.
+OUTPUT FORMAT (STRICTLY FOLLOW):
 
-Recommended Actions:
-- Use context-supported actions.
-- Add basic emergency care steps if obvious (e.g., trauma → check airway, bleeding).
+Triage Level: RED or YELLOW or GREEN
 
-Evidence:
-- Quote from context if available.
+Reason:
+Explain in 1-2 simple sentences what might be happening.
 
-Red Flags:
-- Mention serious warning signs relevant to situation.
+What to do:
+Give clear and practical next steps.
+
+-----------------------
+
+EXAMPLE:
+
+Triage Level: RED
+
+Reason:
+The patient is not breathing, which is a life-threatening emergency.
+
+What to do:
+Call emergency services immediately and start CPR if trained.
+
+-----------------------
+
+Now generate the answer:
 """
 
     try:
         response = requests.post(
             "http://localhost:11434/api/generate",
-            json={"model": "mistral:7b", "prompt": prompt, "stream": False},
+            json={
+                "model": "mistral:7b",
+                "prompt": prompt,
+                "stream": False,
+                "temperature": 0.2,  # 🔥 makes output stable & less random
+            },
             timeout=300,
         )
 
@@ -53,13 +73,18 @@ Red Flags:
             return f"⚠ API Error: {response.text}"
 
         data = response.json()
-
         answer = data.get("response", "").strip()
 
         if not answer:
             return "⚠ Empty response from model"
 
-        return answer
+        # 🔥 EXTRA CLEANING (very important)
+        answer = answer.replace("Clinical Summary:", "")
+        answer = answer.replace("Recommended Actions:", "")
+        answer = answer.replace("Evidence:", "")
+        answer = answer.replace("Red Flags:", "")
+
+        return answer.strip()
 
     except Exception as e:
         print("❌ Generation error:", e)

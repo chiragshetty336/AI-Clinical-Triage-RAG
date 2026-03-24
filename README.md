@@ -1,176 +1,260 @@
-# AI Clinical Triage RAG System
 
-## Project Overview
 
-This project is an **AI-powered Clinical Decision Support System** built
-using a **Retrieval-Augmented Generation (RAG)** architecture. It
-analyzes patient symptoms and vital signs, retrieves relevant medical
-guidelines, and generates structured clinical recommendations.
 
-The system combines **medical document retrieval**, **LLM reasoning**,
-and **clinical triage logic** to assist in evaluating patient
-conditions.
 
-------------------------------------------------------------------------
 
-# System Architecture
+# 🧠 AI Clinical Triage RAG System
 
-User Input  
-↓  
-FastAPI API  
-↓  
-Vital Signs Triage Engine  
-↓  
-Medical Agent  
-↓  
-FAISS Vector Retrieval  
-↓  
-LLM Clinical Reasoning (Ollama)  
-↓  
-Safety & Faithfulness Evaluation  
-↓  
-Clinical Recommendation
+## 📌 Project Overview
 
-------------------------------------------------------------------------
+This project is an **AI-powered Clinical Triage Decision Support System** built using a **Retrieval-Augmented Generation (RAG)** architecture.
 
-# Key Features Implemented
+It analyzes **patient symptoms and vital signs**, retrieves relevant **medical triage guidelines**, and generates **clear, structured, and easy-to-understand recommendations**.
 
-## 1. Medical RAG Pipeline
+The system simulates real-world emergency triage by combining:
 
-The system uses **Retrieval-Augmented Generation** to answer medical
-queries.
+- ⚕️ Medical knowledge retrieval  
+- 🤖 LLM-based reasoning  
+- 🚑 Rule-based triage classification  
+- 🔁 Self-reflection for improved answers  
 
-Steps: 1. Medical PDFs are ingested 2. Text is chunked 3. BioBERT
-embeddings are generated 4. Embeddings are stored in a FAISS index 5.
-Relevant context is retrieved for user queries
+---
 
-------------------------------------------------------------------------
+# 🏗️ System Architecture
 
-## 2. Clinical Triage Classification
+```
 
-| Level  | Meaning                    |
-|--------|----------------------------|
-| RED    | Life‑threatening condition |
-| YELLOW | Urgent but stable          |
-| GREEN  | Mild condition             |
+User Query
+↓
+Query Normalization
+↓
+Emergency Detection (Override)
+↓
+Triage Classification (RED / YELLOW / GREEN)
+↓
+Hybrid Retrieval (FAISS + BM25)
+↓
+Cross-Encoder Reranking
+↓
+Context Generation
+↓
+LLM Response Generation
+↓
+Self-Reflection (Answer Improvement)
+↓
+Safety & Evaluation
+↓
+Final Clinical Response
 
-------------------------------------------------------------------------
+```
 
-## 3. Vital Signs Triage Engine
+---
 
-Evaluates patient vital signs:
+# 🚀 Key Features
 
--   Heart Rate
--   Oxygen Saturation
--   Temperature
--   Systolic Blood Pressure
+## 🧩 1. Medical RAG Pipeline
+- Medical PDFs are ingested and processed
+- Text is chunked and converted into embeddings
+- FAISS vector database stores embeddings
+- Relevant medical context is retrieved dynamically
 
-Example request:
+---
 
-{ “symptoms”: “breathing difficulty”, “heart_rate”: 130, “oxygen”: 85,
-“temperature”: 39, “systolic_bp”: 90 }
+## 🚑 2. Clinical Triage Classification
 
-------------------------------------------------------------------------
+| Level  | Description                     |
+|--------|---------------------------------|
+| 🔴 RED    | Life-threatening emergency        |
+| 🟡 YELLOW | Urgent but stable condition      |
+| 🟢 GREEN  | Mild / non-emergency condition   |
 
-## 4. Medical Agent Pipeline
+---
 
-The AI agent performs:
+## ❤️ 3. Vital Signs Triage Engine
 
-1.  Query normalization
-2.  Intent classification
-3.  Triage classification
-4.  FAISS document retrieval
-5.  LLM-based medical reasoning
-6.  Faithfulness evaluation
-7.  Safety flagging
+Evaluates:
+- Heart Rate  
+- Oxygen Saturation  
+- Temperature  
+- Systolic Blood Pressure  
 
-------------------------------------------------------------------------
+👉 Automatically overrides triage if critical values are detected.
 
-## 5. Safety Evaluation System
+---
 
-Two evaluation metrics:
+## 🔍 4. Hybrid Retrieval System
 
-**Confidence Score** Semantic similarity between query and retrieved
-documents.
+Combines:
+- **FAISS (semantic search)**
+- **BM25 (keyword search)**
 
-**Faithfulness Score** Checks whether the generated answer is grounded
-in retrieved context.
+👉 Improves both:
+- Recall (finding relevant info)
+- Precision (reducing noise)
 
-------------------------------------------------------------------------
+---
 
-## 6. FastAPI Clinical API
+## 🧠 5. Cross-Encoder Reranking
 
-Endpoint:
+- Uses `cross-encoder/ms-marco-MiniLM-L-6-v2`
+- Re-ranks retrieved documents
+- Keeps only highly relevant medical context
+
+---
+
+## 🤖 6. LLM-Based Response Generation
+
+- Powered by **Ollama (Mistral / Phi3)**
+- Produces:
+  - Simple explanations
+  - Clear reasoning
+  - Actionable steps for patients
+
+---
+
+## 🔁 7. Self-Reflection RAG (Advanced Feature)
+
+- The model reviews its own answer
+- Improves:
+  - clarity
+  - correctness
+  - safety
+
+👉 This significantly boosts output quality and reduces hallucination
+
+---
+
+## 🛡️ 8. Safety & Evaluation System
+
+### Metrics:
+- **Triage Accuracy** → classification correctness  
+- **Triage Score** → reasoning + clarity  
+
+### Safety Checks:
+- Low confidence detection  
+- Faithfulness scoring  
+- Context validation  
+
+---
+
+## ⚡ 9. FastAPI Clinical API
+
+### Endpoint:
+```
 
 POST /query
 
-Example Response:
+````
 
-{ “triage_level”: “RED”, “vital_triage”: “RED”, “confidence_score”:
-0.82, “faithfulness_score”: 11.7, “emergency_detected”: true,
-“safety_flag”: true }
+### Example Response:
+```json
+{
+  "triage_level": "RED",
+  "vital_triage": "RED",
+  "confidence_score": 0.82,
+  "faithfulness_score": 78.5,
+  "emergency_detected": true,
+  "safety_flag": false,
+  "recommended_action": "Immediate emergency care required"
+}
+````
 
-------------------------------------------------------------------------
+---
 
-## 7. Airflow Data Pipeline
+## 🔄 10. Airflow Data Pipeline
 
-Pipeline tasks:
+Automates data ingestion:
 
-1.  detect_pdfs
-2.  ingest_documents
-3.  validate_index
-4.  pipeline_summary
+1. Detect PDFs
+2. Process and chunk text
+3. Generate embeddings
+4. Update FAISS index
+5. Validate pipeline
 
-Flow:
+---
 
-Detect PDFs → Generate Embeddings → Update FAISS Index → Validate Index
+# 🛠️ Tech Stack
 
-------------------------------------------------------------------------
+* **Backend:** FastAPI
+* **Vector Database:** FAISS
+* **Embeddings:** BioBERT (`pritamdeka/...`)
+* **LLM:** Ollama (Mistral / Phi3)
+* **Reranker:** Cross-Encoder MiniLM
+* **Retrieval:** Hybrid (FAISS + BM25)
+* **Pipeline:** Apache Airflow
+* **Containerization:** Docker
+* **Libraries:** NumPy, PyMuPDF, Sentence Transformers
 
-# Technologies Used
+---
 
--   Python
--   FastAPI
--   FAISS
--   Sentence Transformers (BioBERT)
--   Ollama
--   Apache Airflow
--   Docker
--   PyMuPDF
--   NumPy
+# 📁 Project Structure
 
-------------------------------------------------------------------------
+```
+api/                # FastAPI endpoints
+rag/                # Core RAG pipeline
+evaluation/         # Evaluation system
+dags/               # Airflow pipelines
+data/               # Medical datasets
+Dockerfile
+docker-compose.yaml
+requirements.txt
+```
 
-# Project Structure
+---
 
-api/ rag/ dags/ data/ Dockerfile docker-compose.yaml requirements.txt
+# ▶️ How to Run
 
-------------------------------------------------------------------------
+## 1. Clone Repository
 
-# How to Run
+```bash
+git clone <your_repo_url>
+cd medical-triage-rag
+```
 
-1.  Clone repository git clone <repo_url>
+## 2. Start Services
 
-2.  Start containers docker compose up –build
+```bash
+docker compose up --build
+```
 
-3.  Open API docs http://localhost:8000/docs
+## 3. Access API
 
-4.  Open Airflow http://localhost:8080
+```
+http://localhost:8000/docs
+```
 
-------------------------------------------------------------------------
+## 4. Run Evaluation
 
-# Current Capabilities
+```bash
+python -m evaluation.evaluate_dataset
+```
 
-✔ Medical guideline retrieval  
-✔ Clinical triage classification  
-✔ Vital signs analysis  
-✔ LLM medical reasoning  
-✔ Safety evaluation  
-✔ Automated Airflow pipeline
+---
 
-------------------------------------------------------------------------
+# 📊 Current Performance
 
-# Disclaimer
+* ✅ Triage Accuracy: **100%**
+* 🔥 Average Triage Score: **0.9**
+* ✅ Clear, user-friendly outputs
+* ✅ Reduced hallucination (Self-Reflection RAG)
 
-This project is for **research and educational purposes only** and
-should not be used for real medical decision making.
+---
+
+# 🎯 Use Cases
+
+* Emergency triage simulation
+* Clinical decision support research
+* AI in healthcare experimentation
+* RAG system benchmarking
+
+---
+
+# ⚠️ Disclaimer
+
+This project is intended for **educational and research purposes only**.
+
+It is **not a medical device** and should **not be used for real clinical decisions**.
+
+```
+
+

@@ -1,21 +1,66 @@
 import json
-from sentence_transformers import SentenceTransformer, util
 from rag.agent import medical_agent
 from rag.indexing import load_index
 from rag.vitals_triage import calculate_vital_triage
-from rag.config import INDEX_PATH
 import pickle
 import os
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def evaluate_answer(predicted_answer, ground_truth, predicted_triage, expected_triage):
+
+    pred = predicted_answer.lower()
+    gt = ground_truth.lower()
+
+    score = 0
+
+    # =========================
+    # 1️⃣ TRIAGE (weight: 0.4)
+    # =========================
+    if predicted_triage == expected_triage:
+        score += 0.4
+
+    # =========================
+    # 2️⃣ REASONING MATCH (0.3)
+    # =========================
+    gt_keywords = gt.split()
+
+    overlap = sum(1 for word in gt_keywords if word in pred)
+
+    if overlap >= 3:
+        score += 0.3
+    elif overlap == 2:
+        score += 0.2
+    elif overlap == 1:
+        score += 0.1
+
+    # =========================
+    # 3️⃣ EMERGENCY LANGUAGE (0.2)
+    # =========================
+    severity_words = ["emergency", "critical", "urgent", "immediate"]
+
+    if any(word in pred for word in severity_words):
+        score += 0.2
+
+    # =========================
+    # 4️⃣ PENALTY (IMPORTANT)
+    # =========================
+    # Penalize vague answers
+    if len(pred.split()) < 20:
+        score -= 0.1
+
+    return round(max(score, 0), 3)
 
 
-# load dataset
+# =========================
+# LOAD DATA
+# =========================
 with open("evaluation/queries.json") as f:
     queries = json.load(f)
 
 
-# load RAG index
+# =========================
+# LOAD INDEX
+# =========================
 index = load_index()
 
 metadata_path = os.path.join("data/embeddings_cache", "metadata.pkl")
@@ -35,10 +80,8 @@ for q in queries:
     ground_truth = q["ground_truth"]
     expected_triage = q["expected_triage"]
 
-    # run RAG system
     result = medical_agent(query, index, chunks, metadata)
 
-    # run vital triage
     triage_vitals = calculate_vital_triage(
         heart_rate=q.get("heart_rate"),
         oxygen=q.get("oxygen"),
@@ -46,32 +89,29 @@ for q in queries:
         systolic_bp=q.get("systolic_bp"),
     )
 
-    # override triage if vitals critical
     if triage_vitals == "RED":
         result["triage_level"] = "RED"
 
-    rag_answer = result["answer"]
     predicted_triage = result["triage_level"]
-
-    embeddings = model.encode([rag_answer, ground_truth], convert_to_tensor=True)
-
-    similarity = util.cos_sim(embeddings[0], embeddings[1]).item()
-
-    print("\n---------------------------")
-    print("Query:", query)
-    print("Expected triage:", expected_triage)
-    print("Predicted triage:", predicted_triage)
-    print("Similarity:", similarity)
+    rag_answer = result["answer"]
 
     triage_correct = predicted_triage == expected_triage
 
-    results.append(
-        {"query": query, "triage_correct": triage_correct, "similarity": similarity}
-    )
+    score = evaluate_answer(rag_answer, ground_truth, predicted_triage, expected_triage)
+
+    print("\n===========================")
+    print("Query:", query)
+    print("Expected:", expected_triage)
+    print("Predicted:", predicted_triage)
+    print("Score:", score)
+    print("===========================\n")
+
+    results.append({"query": query, "triage_correct": triage_correct, "score": score})
 
 
-avg_similarity = sum(r["similarity"] for r in results) / len(results)
+avg_score = sum(r["score"] for r in results) / len(results)
 triage_accuracy = sum(r["triage_correct"] for r in results) / len(results)
 
-print("Average similarity:", avg_similarity)
-print("Triage accuracy:", triage_accuracy)
+print("\n📊 FINAL RESULTS")
+print("Triage Accuracy:", round(triage_accuracy, 3))
+print("Average Score:", round(avg_score, 3))

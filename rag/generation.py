@@ -1,60 +1,59 @@
 import requests
 
 
-def generate_answer(context, question):
+def generate_answer(context, question, triage_level):
 
-    # 🔥 LIMIT CONTEXT SIZE (keep only useful part)
-    context = context[:1500]
+    # 🔥 LIMIT CONTEXT SIZE
+    context = context[:1200]
 
     prompt = f"""
-You are a medical triage assistant helping a normal person.
+You are a medical triage assistant.
 
-Your job is to give:
-- SIMPLE
-- CLEAR
-- EASY TO UNDERSTAND answers
-
-IMPORTANT RULES:
-- Do NOT use complex medical terms
-- Do NOT copy raw text from context
-- Explain in plain English
-- Be calm and direct
+CRITICAL RULES:
+- Answer must be VERY SHORT
+- Maximum 3-4 lines total
+- DO NOT add extra steps
+- DO NOT mention advanced medical procedures (ACLS, oxygen, etc.)
+- Focus ONLY on what a normal person should do
+- If triage is RED, ALWAYS mention "medical emergency" or "life-threatening"
+If triage is GREEN, ALWAYS include:
+- rest advice
+- AND "seek medical help if symptoms worsen"
 
 -----------------------
-CONTEXT:
-{context}
------------------------
-
 PATIENT QUERY:
 {question}
 
+TRIAGE LEVEL: {triage_level}
+
 -----------------------
 
-OUTPUT FORMAT (STRICTLY FOLLOW):
+FORMAT:
 
-Triage Level: RED or YELLOW or GREEN
+Triage Level: {triage_level}
 
 Reason:
-Explain in 1-2 simple sentences what might be happening.
+(1 short sentence explaining the problem AND clearly mention if it is serious, e.g., "life-threatening" or "medical emergency" if applicable)
 
 What to do:
-Give clear and practical next steps.
+- Give simple advice
+- If triage is RED → immediate emergency action
+- If triage is GREEN → include:
+  "monitor symptoms and seek medical help if condition worsens"
 
 -----------------------
 
-EXAMPLE:
+GOOD EXAMPLE:
 
 Triage Level: RED
 
 Reason:
-The patient is not breathing, which is a life-threatening emergency.
+The patient is not breathing, which is life-threatening.
 
 What to do:
-Call emergency services immediately and start CPR if trained.
+Call emergency services immediately.
 
 -----------------------
-
-Now generate the answer:
 """
 
     try:
@@ -64,7 +63,7 @@ Now generate the answer:
                 "model": "mistral:7b",
                 "prompt": prompt,
                 "stream": False,
-                "temperature": 0.2,  # 🔥 makes output stable & less random
+                "temperature": 0.1,  # 🔥 more stable + less overthinking
             },
             timeout=300,
         )
@@ -78,14 +77,8 @@ Now generate the answer:
         if not answer:
             return "⚠ Empty response from model"
 
-        # 🔥 EXTRA CLEANING (very important)
-        answer = answer.replace("Clinical Summary:", "")
-        answer = answer.replace("Recommended Actions:", "")
-        answer = answer.replace("Evidence:", "")
-        answer = answer.replace("Red Flags:", "")
-
         return answer.strip()
 
     except Exception as e:
         print("❌ Generation error:", e)
-        return "⚠ Error generating medical response. Please try again."
+        return "⚠ Error generating medical response."

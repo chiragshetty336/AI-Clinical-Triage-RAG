@@ -27,5 +27,40 @@
     "systolic_bp": 120,
     "expected_triage": "GREEN",
     "ground_truth": "Mild infection likely requiring routine medical evaluation"
+  },
+
+  {
+    "query": "patient severe chest pain and difficulty breathing",
+    "expected_triage": "RED",
+    "ground_truth": "Possible heart attack or respiratory emergency"
+  },
+  {
+    "query": "patient bleeding heavily after accident",
+    "expected_triage": "RED",
+    "ground_truth": "Severe trauma requiring immediate care"
+  },
+  {
+    "query": "patient high fever and confusion",
+    "expected_triage": "RED",
+    "ground_truth": "Possible sepsis or serious infection"
+  },
+  {
+    "query": "patient moderate abdominal pain for 2 days",
+    "expected_triage": "YELLOW",
+    "ground_truth": "Requires medical evaluation but not emergency"
+  },
+  {
+    "query": "patient mild headache and tiredness",
+    "expected_triage": "GREEN",
+    "ground_truth": "Likely mild condition"
+  },
+  {
+    "query": "child with fever and vomiting",
+    "expected_triage": "YELLOW",
+    "ground_truth": "Possible infection needing attention"
   }
 ]
+
+
+
+

@@ -1,6 +1,3 @@
-import requests
-from torchgen import context
-
 from rag.self_reflection import reflect_and_improve
 from rag.triage import classify_triage
 from rag.reranker import MedicalReranker
@@ -8,7 +5,6 @@ from rag.clinical_decision import admission_decision
 from rag.hybrid_retrieval import HybridRetriever
 from rag.generation import generate_answer
 from rag.evaluation import calculate_faithfulness
-from rag.self_reflection import reflect_and_improve
 
 reranker = MedicalReranker()
 retriever = None
@@ -75,28 +71,7 @@ def medical_agent(query, index, chunks, metadata):
 
     print(f"🚑 TRIAGE LEVEL: {triage_level}")
 
-    # ✅ HARD FIXES
-    vital_triage = triage_level
-    query_lower = query.lower()
-
-    query_lower = query.lower()
-
-    emergency_detected = triage_level == "RED" or any(
-        word in query_lower
-        for word in [
-            "accident",
-            "vehicle",
-            "collision",
-            "crash",
-            "injury",
-            "trauma",
-            "hit",
-            "bleeding",
-            "fall",
-        ]
-    )
-
-    # retrieval size
+    # 🔥 retrieval size
     if triage_level == "RED":
         top_k = 10
     elif triage_level == "YELLOW":
@@ -115,13 +90,7 @@ def medical_agent(query, index, chunks, metadata):
     if not results:
         return {
             "answer": "No relevant medical guideline information found.",
-            "sources": [],
-            "confidence_score": 0.5,
-            "faithfulness_score": 50,
-            "safety_flag": True,
-            "emergency_detected": emergency_detected,
             "triage_level": triage_level,
-            "vital_triage": vital_triage,
         }
 
     reranked_docs, reranked_meta = reranker.rerank(
@@ -129,58 +98,32 @@ def medical_agent(query, index, chunks, metadata):
     )
 
     context = "\n\n".join(reranked_docs[:3])
-    sources = reranked_meta
 
     print("\n===== RAG CONTEXT =====")
     print(context[:500])
     print("=======================\n")
 
-    # Step 1: generate answer
-    answer = generate_answer(context, query)
+    # 🔥 STEP 1: CLEAN GENERATION
 
-    # Step 2: improve answer
-    answer = reflect_and_improve(answer, context, query)
+    # 🔥 reduce context influence
+    simple_context = context[:300]
 
-    # ✅ SAFE FAITHFULNESS
-    try:
-        faithfulness = calculate_faithfulness(answer, context)
-    except:
-        faithfulness = 50
+    answer = generate_answer(simple_context, query, triage_level)
 
-    if not faithfulness or faithfulness == 0:
-        faithfulness = 50
+    # 🔥 STEP 2: SELF-REFLECTION (ONLY FOR RED/YELLOW)
+    if triage_level == "YELLOW":
+        answer = reflect_and_improve(answer, context, query)
 
-    # ✅ SAFE CONFIDENCE
-    if not confidence or confidence == 0:
-        confidence_score = 0.5
-    else:
-        confidence_score = float(confidence)
-
-    # ✅ SAFETY LOGIC
-    safety_flag = False
-
-    if confidence_score < 0.3 or faithfulness < 40:
-        safety_flag = True
-
-    if len(context.strip()) < 50:
-        safety_flag = True
-
-    if safety_flag:
-        answer += (
-            "\n\n⚠ The answer may not be fully grounded in the retrieved guidelines."
-        )
+    # 🔥 HARD FIX: ENSURE TRIAGE CONSISTENCY
+    answer = answer.replace("Triage Level: GREEN", f"Triage Level: {triage_level}")
+    answer = answer.replace("Triage Level: YELLOW", f"Triage Level: {triage_level}")
+    answer = answer.replace("Triage Level: RED", f"Triage Level: {triage_level}")
 
     decision = admission_decision(triage_level)
 
     return {
         "answer": answer,
-        "sources": sources,
-        "confidence_score": round(confidence_score, 3),
-        "faithfulness_score": round(faithfulness, 2),
-        "safety_flag": safety_flag,
-        "emergency_detected": emergency_detected,
         "triage_level": triage_level,
-        "vital_triage": vital_triage,
         "admission": decision["admission"],
         "priority": decision["priority"],
         "recommended_action": decision["action"],

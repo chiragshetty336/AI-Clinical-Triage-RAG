@@ -1,0 +1,14 @@
+[
+  {
+    "query": "patient severe chest pain sweating",
+    "gpt_answer": "Severe chest pain with sweating may indicate a heart attack. This is a medical emergency. Seek immediate emergency care."
+  },
+  {
+    "query": "patient unconscious and not breathing",
+    "gpt_answer": "This is a life-threatening emergency. The patient may be in cardiac arrest. Call emergency services immediately and start CPR if trained."
+  },
+  {
+    "query": "patient mild fever and cough",
+    "gpt_answer": "This is likely a mild infection. Rest, hydration, and monitoring symptoms are recommended. Seek care if symptoms worsen."
+  }
+]

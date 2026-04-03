@@ -1,0 +1,9 @@
+id,query,expected,mistral_triage,mistral_correct,mistral_composite,mistral_semantic,groq_triage,groq_correct,groq_composite,groq_semantic
+1,"Patient presents with crushing chest pain radiating to left arm, sweating, heart rate 130, BP 90/60.",RED,RED,True,0.3286,0.5569,RED,True,0.2503,0.4455
+2,Worst headache of life with neck stiffness and photophobia,RED,RED,True,0.2128,0.3438,RED,True,0.3766,0.6807
+3,Asthma patient oxygen 92% difficulty speaking,YELLOW,RED,False,0.2632,0.4728,RED,False,0.2649,0.483
+4,Child with fever and sore throat,YELLOW,RED,False,0.398,0.7156,YELLOW,True,0.3805,0.6826
+5,Mild ankle sprain no swelling,GREEN,RED,False,0.3827,0.6988,RED,False,0.3916,0.7159
+6,Mild cough 3 days no fever,GREEN,YELLOW,False,0.2633,0.4809,RED,False,0.2731,0.4961
+7,Unresponsive patient no pulse CPR started,RED,RED,True,0.3453,0.6362,RED,True,0.3407,0.6519
+8,Diabetes glucose 380 conscious,YELLOW,YELLOW,True,0.2931,0.5259,RED,False,0.2986,0.5454

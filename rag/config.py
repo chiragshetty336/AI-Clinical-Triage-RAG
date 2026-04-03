@@ -9,3 +9,6 @@ CACHE_PATH = os.path.join(PROJECT_ROOT, "data/embeddings_cache")
 INDEX_PATH = os.path.join(CACHE_PATH, "medical_faiss.index")
 
 MODEL_NAME = "pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb"
+
+from dotenv import load_dotenv
+import os

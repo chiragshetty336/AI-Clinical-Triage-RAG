@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Clinical LLM Dashboard</title>
+
+<style>
+body {
+  background:#0b0f14;
+  color:#e6edf3;
+  font-family:Segoe UI;
+  padding:20px;
+}
+
+h1 { color:#60a5fa }
+
+button {
+  padding:6px 12px;
+  margin:4px;
+  border:none;
+  border-radius:6px;
+  background:#1f6feb;
+  color:white;
+  cursor:pointer;
+}
+
+textarea {
+  width:100%;
+  height:70px;
+  background:#111;
+  color:white;
+  border:1px solid #333;
+  padding:10px;
+}
+
+.container {
+  display:flex;
+  gap:15px;
+  margin-top:20px;
+}
+
+.card {
+  flex:1;
+  background:#111;
+  padding:15px;
+  border-radius:10px;
+  border:1px solid #222;
+}
+
+.score {
+  margin-top:10px;
+  background:#161b22;
+  padding:8px;
+  border-radius:6px;
+}
+
+.bar {
+  height:8px;
+  background:#222;
+  border-radius:5px;
+  margin:4px 0;
+}
+.fill {
+  height:8px;
+  background:#22c55e;
+  border-radius:5px;
+}
+
+.winner {
+  border:2px solid #22c55e;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Clinical LLM Evaluation Dashboard</h1>
+
+<!-- QUERY BUTTONS -->
+<div>
+<button onclick="setQuery(0)">Chest Pain</button>
+<button onclick="setQuery(1)">Headache</button>
+<button onclick="setQuery(2)">Asthma</button>
+<button onclick="setQuery(3)">Child Fever</button>
+<button onclick="setQuery(4)">Ankle Sprain</button>
+<button onclick="setQuery(5)">Cough</button>
+<button onclick="setQuery(6)">Cardiac Arrest</button>
+<button onclick="setQuery(7)">Diabetes</button>
+</div>
+
+<textarea id="query"></textarea>
+<br>
+<button onclick="run()">Compare</button>
+
+<div class="container">
+
+<div class="card">
+<h3>Base Answer</h3>
+<pre id="base"></pre>
+<div id="winner"></div>
+</div>
+
+<div class="card" id="mCard">
+<h3>Mistral</h3>
+<pre id="mistral"></pre>
+<div class="score" id="m_score"></div>
+</div>
+
+<div class="card" id="gCard">
+<h3>Groq</h3>
+<pre id="groq"></pre>
+<div class="score" id="g_score"></div>
+</div>
+
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000";
+
+// SAME AS BENCHMARK
+const BASE = [
+"Chest pain radiating to arm with hypotension indicates acute coronary syndrome. Immediate ECG, oxygen, aspirin and cardiology referral required.",
+"Worst headache with neck stiffness suggests subarachnoid hemorrhage or meningitis. CT scan and lumbar puncture required.",
+"Asthma with low oxygen indicates acute exacerbation. Oxygen, bronchodilators, steroids needed.",
+"Child with fever and sore throat likely infection. Throat exam, hydration, and antibiotics if bacterial.",
+"Mild ankle sprain managed with rest, ice, compression and elevation.",
+"Mild viral infection managed with rest and fluids.",
+"Cardiac arrest requires immediate CPR and defibrillation.",
+"Diabetes with high glucose requires insulin and evaluation."
+];
+
+// SAME QUERIES
+const queries = [
+"Patient presents with crushing chest pain radiating to left arm, sweating, heart rate 130, BP 90/60.",
+"Worst headache of life with neck stiffness",
+"Asthma patient oxygen 92%",
+"Child with fever and sore throat",
+"Mild ankle sprain",
+"Mild cough 3 days no fever",
+"Unresponsive patient no pulse CPR started",
+"Diabetes glucose 380 conscious"
+];
+
+function setQuery(i){
+  document.getElementById("query").value = queries[i];
+}
+
+function formatScore(s){
+  return `
+Semantic: ${s.semantic_similarity}
+<div class="bar"><div class="fill" style="width:${s.semantic_similarity*100}%"></div></div>
+
+ROUGE: ${s.rouge1_f1}
+<div class="bar"><div class="fill" style="width:${s.rouge1_f1*100}%"></div></div>
+
+Composite: ${s.composite_score}
+<div class="bar"><div class="fill" style="width:${s.composite_score*100}%"></div></div>
+`;
+}
+
+async function run(){
+
+  const q = document.getElementById("query").value;
+
+  let idx = queries.findIndex(x => q.includes(x.split(" ")[0]));
+  if(idx === -1) idx = 0;
+
+  // base answer
+  document.getElementById("base").innerText = BASE[idx];
+
+  // model outputs
+  const res = await fetch(API + "/compare/", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ query:q })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("mistral").innerText = data.mistral.answer;
+  document.getElementById("groq").innerText = data.gpt4.answer;
+
+  // base scoring
+  const score = await fetch(API + "/compare/score-against-base", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      query_index: idx,
+      mistral_answer: data.mistral.answer,
+      groq_answer: data.gpt4.answer
+    })
+  });
+
+  const s = await score.json();
+
+  document.getElementById("m_score").innerHTML =
+    formatScore(s.mistral_vs_base);
+
+  document.getElementById("g_score").innerHTML =
+    formatScore(s.groq_vs_base);
+
+  // winner highlight
+  const m = s.mistral_vs_base.composite_score;
+  const g = s.groq_vs_base.composite_score;
+
+  document.getElementById("mCard").classList.remove("winner");
+  document.getElementById("gCard").classList.remove("winner");
+
+  let winnerText = "";
+
+  if(m > g){
+    document.getElementById("mCard").classList.add("winner");
+    winnerText = "🏆 Mistral better";
+  } else {
+    document.getElementById("gCard").classList.add("winner");
+    winnerText = "🏆 Groq better";
+  }
+
+  document.getElementById("winner").innerText = winnerText;
+}
+</script>
+
+</body>
+</html>

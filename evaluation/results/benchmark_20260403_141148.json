@@ -1,0 +1,114 @@
+{
+  "summary": {
+    "mistral_accuracy": 0.5,
+    "groq_accuracy": 0.5,
+    "avg_mistral_score": 0.31087499999999996,
+    "avg_groq_score": 0.3220375
+  },
+  "results": [
+    {
+      "id": 1,
+      "query": "Patient presents with crushing chest pain radiating to left arm, sweating, heart rate 130, BP 90/60.",
+      "expected": "RED",
+      "mistral_triage": "RED",
+      "mistral_correct": true,
+      "mistral_composite": 0.3286,
+      "mistral_semantic": 0.5569,
+      "groq_triage": "RED",
+      "groq_correct": true,
+      "groq_composite": 0.2503,
+      "groq_semantic": 0.4455
+    },
+    {
+      "id": 2,
+      "query": "Worst headache of life with neck stiffness and photophobia",
+      "expected": "RED",
+      "mistral_triage": "RED",
+      "mistral_correct": true,
+      "mistral_composite": 0.2128,
+      "mistral_semantic": 0.3438,
+      "groq_triage": "RED",
+      "groq_correct": true,
+      "groq_composite": 0.3766,
+      "groq_semantic": 0.6807
+    },
+    {
+      "id": 3,
+      "query": "Asthma patient oxygen 92% difficulty speaking",
+      "expected": "YELLOW",
+      "mistral_triage": "RED",
+      "mistral_correct": false,
+      "mistral_composite": 0.2632,
+      "mistral_semantic": 0.4728,
+      "groq_triage": "RED",
+      "groq_correct": false,
+      "groq_composite": 0.2649,
+      "groq_semantic": 0.483
+    },
+    {
+      "id": 4,
+      "query": "Child with fever and sore throat",
+      "expected": "YELLOW",
+      "mistral_triage": "RED",
+      "mistral_correct": false,
+      "mistral_composite": 0.398,
+      "mistral_semantic": 0.7156,
+      "groq_triage": "YELLOW",
+      "groq_correct": true,
+      "groq_composite": 0.3805,
+      "groq_semantic": 0.6826
+    },
+    {
+      "id": 5,
+      "query": "Mild ankle sprain no swelling",
+      "expected": "GREEN",
+      "mistral_triage": "RED",
+      "mistral_correct": false,
+      "mistral_composite": 0.3827,
+      "mistral_semantic": 0.6988,
+      "groq_triage": "RED",
+      "groq_correct": false,
+      "groq_composite": 0.3916,
+      "groq_semantic": 0.7159
+    },
+    {
+      "id": 6,
+      "query": "Mild cough 3 days no fever",
+      "expected": "GREEN",
+      "mistral_triage": "YELLOW",
+      "mistral_correct": false,
+      "mistral_composite": 0.2633,
+      "mistral_semantic": 0.4809,
+      "groq_triage": "RED",
+      "groq_correct": false,
+      "groq_composite": 0.2731,
+      "groq_semantic": 0.4961
+    },
+    {
+      "id": 7,
+      "query": "Unresponsive patient no pulse CPR started",
+      "expected": "RED",
+      "mistral_triage": "RED",
+      "mistral_correct": true,
+      "mistral_composite": 0.3453,
+      "mistral_semantic": 0.6362,
+      "groq_triage": "RED",
+      "groq_correct": true,
+      "groq_composite": 0.3407,
+      "groq_semantic": 0.6519
+    },
+    {
+      "id": 8,
+      "query": "Diabetes glucose 380 conscious",
+      "expected": "YELLOW",
+      "mistral_triage": "YELLOW",
+      "mistral_correct": true,
+      "mistral_composite": 0.2931,
+      "mistral_semantic": 0.5259,
+      "groq_triage": "RED",
+      "groq_correct": false,
+      "groq_composite": 0.2986,
+      "groq_semantic": 0.5454
+    }
+  ]
+}

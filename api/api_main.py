@@ -1,20 +1,45 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import pickle
 import requests
 
 from sentence_transformers import SentenceTransformer
+from fastapi.middleware.cors import CORSMiddleware
 
 from rag.vitals_triage import calculate_vital_triage
 from rag.config import CACHE_PATH, INDEX_PATH, MODEL_NAME
-from rag.agent import medical_agent
+
 from rag.indexing import load_index
 from rag.cache_db import search_cache, store_cache
-from evaluation.evaluate import evaluate_answers
+
+try:
+    from rag.agent import medical_agent
+except Exception as e:
+    print("❌ ERROR loading rag.agent:", e)
+
+try:
+    from evaluation.evaluate import evaluate_answers
+except Exception as e:
+    print("❌ ERROR loading evaluation:", e)
+
 from typing import Optional
 
 app = FastAPI(title="Medical RAG System")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from api.compare_routes import router as compare_router
+
+app.include_router(compare_router)
 
 # ------------------------------------------------
 # GLOBAL VARIABLES
@@ -23,7 +48,6 @@ index = None
 chunks = []
 metadata = []
 
-# Load embedding model once
 model = SentenceTransformer(MODEL_NAME)
 
 
@@ -59,7 +83,6 @@ def load_rag_components():
         print("🚨 Failed to load RAG components:", str(e))
 
 
-# Load at startup
 load_rag_components()
 
 
@@ -68,7 +91,6 @@ load_rag_components()
 # ------------------------------------------------
 class QueryRequest(BaseModel):
     question: str
-
     heart_rate: Optional[int] = None
     oxygen: Optional[int] = None
     temperature: Optional[float] = None
@@ -87,19 +109,14 @@ def query_rag(request: QueryRequest):
     try:
         print("\n🔎 Incoming Query:", request.question)
 
-        # -----------------------------
         # 1️⃣ Embedding
-        # -----------------------------
         query_embedding = model.encode([request.question])[0]
 
-        # -----------------------------
         # 2️⃣ Cache
-        # -----------------------------
         cached = search_cache(request.question, query_embedding)
 
         if cached:
             print("⚡ Cache hit")
-
             return {
                 "triage_level": cached.get("triage_level", "GREEN"),
                 "vital_triage": "UNKNOWN",
@@ -115,9 +132,7 @@ def query_rag(request: QueryRequest):
                 "cached": True,
             }
 
-        # -----------------------------
         # 3️⃣ Vital triage
-        # -----------------------------
         triage_vitals = calculate_vital_triage(
             heart_rate=request.heart_rate,
             oxygen=request.oxygen,
@@ -125,28 +140,20 @@ def query_rag(request: QueryRequest):
             systolic_bp=request.systolic_bp,
         )
 
-        # -----------------------------
         # 4️⃣ RAG pipeline
-        # -----------------------------
         result = medical_agent(request.question, index, chunks, metadata)
 
         if result is None:
             return {"error": "RAG pipeline failed."}
 
-        # -----------------------------
-        # 5️⃣ Merge triage properly
-        # -----------------------------
+        # 5️⃣ Merge triage
         final_triage = result.get("triage_level", "GREEN")
-
         if triage_vitals == "RED":
             final_triage = "RED"
 
-        # 🔥 FIX: ALWAYS consistent
         vital_triage = final_triage
 
-        # -----------------------------
         # 6️⃣ Store cache
-        # -----------------------------
         store_cache(
             request.question,
             query_embedding,
@@ -155,21 +162,17 @@ def query_rag(request: QueryRequest):
             result.get("sources", []),
         )
 
-        # -----------------------------
-        # 7️⃣ Evaluation (safe)
-        # -----------------------------
+        # 7️⃣ Evaluation (FIXED)
         try:
             evaluation = evaluate_answers(request.question, result.get("answer", ""))
-            gpt_answer = evaluation.get("gpt_answer", "")
+            reference_answer = evaluation.get("reference_answer", "")  # ✅ FIXED
             similarity = round(evaluation.get("similarity_score", 0), 3)
         except Exception as e:
             print("⚠ Evaluation failed:", e)
-            gpt_answer = ""
+            reference_answer = ""
             similarity = 0
 
-        # -----------------------------
         # 8️⃣ FINAL RESPONSE (FIXED)
-        # -----------------------------
         return {
             "triage_level": final_triage,
             "vital_triage": vital_triage,
@@ -177,10 +180,9 @@ def query_rag(request: QueryRequest):
             "priority": result.get("priority", "Unknown"),
             "recommended_action": result.get("recommended_action", ""),
             "answer": result.get("answer", ""),
-            "gpt_reference_answer": gpt_answer,
+            "reference_answer": reference_answer,  # ✅ FIXED
             "similarity_score": similarity,
             "sources": result.get("sources", [])[:3],
-            # ✅ FIXED KEYS
             "confidence_score": result.get("confidence_score", 0.5),
             "faithfulness_score": result.get("faithfulness_score", 50),
             "emergency_detected": result.get("emergency_detected", False),
@@ -194,7 +196,7 @@ def query_rag(request: QueryRequest):
 
 
 # ------------------------------------------------
-# AIRFLOW LOG ANALYZER (FIXED)
+# AIRFLOW LOG ANALYZER (UNCHANGED)
 # ------------------------------------------------
 AIRFLOW_LOGS_PATH = "/opt/airflow/logs"
 
@@ -238,9 +240,9 @@ LOG:
 """
 
     response = requests.post(
-        "http://localhost:11434/api/generate",  # ✅ FIXED
-        json={"model": "phi3", "prompt": prompt, "stream": False},  # ✅ FIXED
-        timeout=60,  # ✅ ADDED
+        "http://localhost:11434/api/generate",
+        json={"model": "phi3", "prompt": prompt, "stream": False},
+        timeout=60,
     )
 
     return response.json().get("response", "No response")

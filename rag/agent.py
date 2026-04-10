@@ -89,13 +89,19 @@ def medical_agent(query, index, chunks, metadata):
 
     if not results:
         return {
-            "answer": "No relevant medical guideline information found.",
+            "answer": "No relevant medical guideline found.",
             "triage_level": triage_level,
         }
 
-    reranked_docs, reranked_meta = reranker.rerank(
-        normalized_query, results, sources, top_k=3
-    )
+    # 🔥 SAFE RERANK
+    try:
+        reranked_docs, reranked_meta = reranker.rerank(
+            normalized_query, results, sources, top_k=3
+        )
+    except Exception as e:
+        print("⚠️ Reranker failed:", e)
+        reranked_docs = results[:3]
+        reranked_meta = sources[:3]
 
     context = "\n\n".join(reranked_docs[:3])
 

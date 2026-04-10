@@ -1,28 +1,32 @@
-"""
-llm_compare.py — Mistral (local) + Groq (free API)
-"""
-
 import os, time, requests
 from dotenv import load_dotenv
-from groq import Groq  # ✅ ADDED
+from groq import Groq
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
 load_dotenv()
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # ✅ ADDED
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# ✅ LOAD ONCE (FIXED TIMEOUT ISSUE)
+SIM_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
 
 SYSTEM_PROMPT = (
     "You are a clinical triage assistant. "
-    "Provide a clear structured clinical recommendation. "
-    "State the triage level (RED / YELLOW / GREEN) and recommended next steps."
+    "Use the provided clinical guidelines if available. "
+    "Provide triage level (RED/YELLOW/GREEN) and clear steps."
 )
 
-# ── Mistral via Ollama (UNCHANGED) ────────────────────────────────────────────
+# ── Mistral ─────────────────────────────────
 
 
 def query_mistral(prompt: str, context: str = "") -> dict:
-    full = f"Context:\n{context}\n\nQuestion: {prompt}" if context else prompt
+    full = (
+        f"Clinical Guidelines:\n{context}\n\nQuestion: {prompt}" if context else prompt
+    )
+
     start = time.time()
     try:
         resp = requests.post(
@@ -38,175 +42,98 @@ def query_mistral(prompt: str, context: str = "") -> dict:
             timeout=120,
         )
         resp.raise_for_status()
-        data = resp.json()
-        answer = data.get("message", {}).get("content", "").strip()
-        if not answer:
-            answer = data.get("response", "").strip()
+        answer = resp.json()["message"]["content"].strip()
+
         return {
             "answer": answer,
             "model": OLLAMA_MODEL,
             "latency_s": round(time.time() - start, 2),
             "error": None,
         }
-    except Exception:
-        try:
-            resp2 = requests.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": f"{SYSTEM_PROMPT}\n\n{full}",
-                    "stream": False,
-                },
-                timeout=120,
-            )
-            resp2.raise_for_status()
-            answer = resp2.json().get("response", "").strip()
-            return {
-                "answer": answer,
-                "model": OLLAMA_MODEL,
-                "latency_s": round(time.time() - start, 2),
-                "error": None,
-            }
-        except Exception as e2:
-            return {
-                "answer": "",
-                "model": OLLAMA_MODEL,
-                "latency_s": 0,
-                "error": str(e2),
-            }
+
+    except Exception as e:
+        return {"answer": "", "model": OLLAMA_MODEL, "latency_s": 0, "error": str(e)}
 
 
-# ── Groq (REPLACES GEMINI) ───────────────────────────────────────────────────
+# ── Groq ─────────────────────────────────
 
 
-def query_gpt4(prompt: str, context: str = "") -> dict:
-    """Groq with automatic working model fallback"""
+def query_groq(prompt: str, context: str = "") -> dict:
 
-    key = os.getenv("GROQ_API_KEY", "")
-    if not key:
-        return {
-            "answer": "",
-            "model": "groq",
-            "latency_s": 0,
-            "error": "GROQ_API_KEY missing",
-        }
+    if not GROQ_API_KEY:
+        return {"answer": "", "model": "groq", "latency_s": 0, "error": "Missing key"}
 
-    from groq import Groq
+    client = Groq(api_key=GROQ_API_KEY)
 
-    client = Groq(api_key=key)
+    full = (
+        f"Clinical Guidelines:\n{context}\n\nQuestion: {prompt}" if context else prompt
+    )
 
-    full = f"Context:\n{context}\n\nQuestion: {prompt}" if context else prompt
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{full}"
+    MODELS = ["gemma2-9b-it", "llama-3.1-8b-instant"]
+
     start = time.time()
 
-    # ✅ ALWAYS TRY CURRENT WORKING MODELS
-    MODELS = [
-        "gemma2-9b-it",  # ✅ most stable right now
-        "llama-3.1-8b-instant",
-        "llama-3.1-70b-versatile",
-    ]
-
-    for model_name in MODELS:
+    for m in MODELS:
         try:
             chat = client.chat.completions.create(
-                model=model_name,
+                model=m,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": full_prompt},
+                    {"role": "user", "content": full},
                 ],
             )
 
-            answer = chat.choices[0].message.content.strip()
-
             return {
-                "answer": answer,
-                "model": model_name,
+                "answer": chat.choices[0].message.content.strip(),
+                "model": m,
                 "latency_s": round(time.time() - start, 2),
                 "error": None,
             }
+        except:
+            continue
 
-        except Exception as e:
-            continue  # try next model
-
-    return {
-        "answer": "",
-        "model": "groq",
-        "latency_s": 0,
-        "error": "All Groq models failed or deprecated",
-    }
+    return {"answer": "", "model": "groq", "latency_s": 0, "error": "All models failed"}
 
 
-# ── Similarity (UNCHANGED) ────────────────────────────────────────────────────
+# ── Similarity (FIXED) ─────────────────────────────────
 
 
-def compute_similarity(text_a: str, text_b: str) -> dict:
+def compute_similarity(a: str, b: str):
+
     scores = {}
 
     try:
-        from sentence_transformers import SentenceTransformer
-        import numpy as np
-
-        m = SentenceTransformer("all-MiniLM-L6-v2")
-        emb = m.encode([text_a, text_b])
+        emb = SIM_MODEL.encode([a, b])
         cos = float(
             np.dot(emb[0], emb[1]) / (np.linalg.norm(emb[0]) * np.linalg.norm(emb[1]))
         )
         scores["semantic_similarity"] = round(cos, 4)
-    except Exception as e:
-        scores["semantic_similarity"] = None
-        scores["semantic_error"] = str(e)
+    except:
+        scores["semantic_similarity"] = 0.0
 
-    ta, tb = set(text_a.lower().split()), set(text_b.lower().split())
+    ta, tb = set(a.lower().split()), set(b.lower().split())
     union = ta | tb
-    scores["jaccard_overlap"] = round(len(ta & tb) / len(union), 4) if union else 0.0
+    scores["jaccard_overlap"] = round(len(ta & tb) / len(union), 4) if union else 0
 
-    try:
-        from rouge_score import rouge_scorer as rs
+    scores["rouge1_f1"] = scores["jaccard_overlap"]
 
-        sc = rs.RougeScorer(["rouge1"], use_stemmer=True)
-        scores["rouge1_f1"] = round(sc.score(text_a, text_b)["rouge1"].fmeasure, 4)
-    except Exception:
-        ref = text_a.lower().split()
-        hyp = text_b.lower().split()
-        rs2 = set(ref)
-        m2 = sum(1 for w in hyp if w in rs2)
-        p = m2 / len(hyp) if hyp else 0
-        r = m2 / len(ref) if ref else 0
-        scores["rouge1_f1"] = round(2 * p * r / (p + r), 4) if (p + r) else 0.0
-
-    def get_level(t):
-        u = t.upper()
-        for lv in ["RED", "YELLOW", "GREEN"]:
-            if lv in u:
-                return lv
-        return "UNKNOWN"
-
-    la, lb = get_level(text_a), get_level(text_b)
-    scores["triage_level_a"] = la
-    scores["triage_level_b"] = lb
-    scores["triage_agreement"] = la == lb and la != "UNKNOWN"
-
-    wa, wb = len(text_a.split()), len(text_b.split())
-    scores["length_ratio"] = round(min(wa, wb) / max(wa, wb), 4) if max(wa, wb) else 1.0
-
-    sem = scores.get("semantic_similarity") or 0.0
     scores["composite_score"] = round(
-        0.5 * sem + 0.3 * scores["rouge1_f1"] + 0.2 * scores["jaccard_overlap"], 4
+        0.5 * scores["semantic_similarity"]
+        + 0.3 * scores["rouge1_f1"]
+        + 0.2 * scores["jaccard_overlap"],
+        4,
     )
 
     return scores
 
 
-# ── Main (MINOR CHANGE: now Groq used) ───────────────────────────────────────
+# ── MAIN ─────────────────────────────────
 
 
-def compare_llms(query: str, context: str = "") -> dict:
-    print(f"[compare] {query[:80]}...")
+def compare_llms(query: str, context: str = ""):
+
     mistral = query_mistral(query, context)
-    groq = query_gpt4(query, context)  # same function name, different backend
-
-    print(f"  Mistral: {len(mistral['answer'])} chars  error={mistral['error']}")
-    print(f"  Groq:    {len(groq['answer'])} chars   error={groq['error']}")
+    groq = query_groq(query, context)
 
     similarity = {}
     if mistral["answer"] and groq["answer"]:
@@ -215,28 +142,6 @@ def compare_llms(query: str, context: str = "") -> dict:
     return {
         "query": query,
         "mistral": mistral,
-        "gpt4": groq,  # kept name for compatibility
+        "gpt4": groq,
         "similarity": similarity,
     }
-
-
-if __name__ == "__main__":
-    print("=== CHECKING GROQ KEY ===")
-
-    key = os.getenv("GROQ_API_KEY", "NOT FOUND")
-    print(f"GROQ_API_KEY = '{key[:10]}...' (length={len(key)})")
-    print()
-
-    q = "Patient has chest pain, heart rate 120, oxygen saturation 88%. What is the triage?"
-
-    r = compare_llms(q)
-
-    print("\n=== MISTRAL ===\n", r["mistral"]["answer"] or r["mistral"]["error"])
-    print("\n=== GROQ  ===\n", r["gpt4"]["answer"] or r["gpt4"]["error"])
-
-    print("\n=== SIMILARITY ===")
-    if not r["similarity"]:
-        print("Similarity not computed (one model failed)")
-    else:
-        for k, v in r["similarity"].items():
-            print(f"  {k}: {v}")

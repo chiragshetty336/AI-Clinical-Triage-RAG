@@ -46,6 +46,8 @@ textarea {
   border:1px solid #222;
 }
 
+.hidden { display:none; }
+
 .score {
   margin-top:10px;
   background:#161b22;
@@ -68,7 +70,6 @@ textarea {
 .winner {
   border:2px solid #22c55e;
 }
-
 </style>
 </head>
 
@@ -76,7 +77,6 @@ textarea {
 
 <h1>Clinical LLM Evaluation Dashboard</h1>
 
-<!-- QUERY BUTTONS -->
 <div>
 <button onclick="setQuery(0)">Chest Pain</button>
 <button onclick="setQuery(1)">Headache</button>
@@ -94,7 +94,7 @@ textarea {
 
 <div class="container">
 
-<div class="card">
+<div class="card" id="baseCard">
 <h3>Base Answer</h3>
 <pre id="base"></pre>
 <div id="winner"></div>
@@ -117,7 +117,6 @@ textarea {
 <script>
 const API = "http://127.0.0.1:8000";
 
-// SAME AS BENCHMARK
 const BASE = [
 "Chest pain radiating to arm with hypotension indicates acute coronary syndrome. Immediate ECG, oxygen, aspirin and cardiology referral required.",
 "Worst headache with neck stiffness suggests subarachnoid hemorrhage or meningitis. CT scan and lumbar puncture required.",
@@ -129,7 +128,6 @@ const BASE = [
 "Diabetes with high glucose requires insulin and evaluation."
 ];
 
-// SAME QUERIES
 const queries = [
 "Patient presents with crushing chest pain radiating to left arm, sweating, heart rate 130, BP 90/60.",
 "Worst headache of life with neck stiffness",
@@ -162,13 +160,11 @@ async function run(){
 
   const q = document.getElementById("query").value;
 
+  // 🔥 detect if benchmark query
   let idx = queries.findIndex(x => q.includes(x.split(" ")[0]));
-  if(idx === -1) idx = 0;
+  const isBenchmark = idx !== -1;
 
-  // base answer
-  document.getElementById("base").innerText = BASE[idx];
-
-  // model outputs
+  // always call models
   const res = await fetch(API + "/compare/", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
@@ -180,7 +176,22 @@ async function run(){
   document.getElementById("mistral").innerText = data.mistral.answer;
   document.getElementById("groq").innerText = data.gpt4.answer;
 
-  // base scoring
+  // reset UI
+  document.getElementById("m_score").innerHTML = "";
+  document.getElementById("g_score").innerHTML = "";
+  document.getElementById("winner").innerText = "";
+  document.getElementById("baseCard").classList.remove("hidden");
+
+  if(!isBenchmark){
+    // ❌ external query → hide base + scoring
+    document.getElementById("baseCard").classList.add("hidden");
+    return;
+  }
+
+  // ✅ show base
+  document.getElementById("base").innerText = BASE[idx];
+
+  // scoring
   const score = await fetch(API + "/compare/score-against-base", {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
@@ -199,22 +210,16 @@ async function run(){
   document.getElementById("g_score").innerHTML =
     formatScore(s.groq_vs_base);
 
-  // winner highlight
+  // winner
   const m = s.mistral_vs_base.composite_score;
   const g = s.groq_vs_base.composite_score;
 
   document.getElementById("mCard").classList.remove("winner");
   document.getElementById("gCard").classList.remove("winner");
 
-  let winnerText = "";
-
-  if(m > g){
-    document.getElementById("mCard").classList.add("winner");
-    winnerText = "🏆 Mistral better";
-  } else {
-    document.getElementById("gCard").classList.add("winner");
-    winnerText = "🏆 Groq better";
-  }
+  let winnerText = (m > g)
+    ? "🏆 Mistral better"
+    : "🏆 Groq better";
 
   document.getElementById("winner").innerText = winnerText;
 }

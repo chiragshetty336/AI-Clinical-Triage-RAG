@@ -7,31 +7,30 @@ from rag.config import MODEL_NAME
 model = SentenceTransformer(MODEL_NAME)
 
 
+# ─────────────────────────────────────────
+# Query Expansion
+# ─────────────────────────────────────────
 def expand_query(query):
     q = query.lower()
 
     if "chest pain" in q:
-        return (
-            query
-            + " acute coronary syndrome myocardial infarction diagnosis treatment emergency"
-        )
+        return query + " acute coronary syndrome myocardial infarction emergency"
 
     if "breathing" in q:
-        return (
-            query + " respiratory failure hypoxia airway management emergency treatment"
-        )
+        return query + " respiratory failure hypoxia airway emergency"
 
     if "unconscious" in q:
-        return (
-            query + " cardiac arrest loss of consciousness emergency resuscitation CPR"
-        )
+        return query + " cardiac arrest CPR emergency resuscitation"
 
     if "fever" in q:
-        return query + " infection causes treatment diagnosis mild illness"
+        return query + " infection diagnosis treatment mild illness"
 
     return query
 
 
+# ─────────────────────────────────────────
+# Hybrid Retriever
+# ─────────────────────────────────────────
 class HybridRetriever:
 
     def __init__(self, chunks):
@@ -44,7 +43,7 @@ class HybridRetriever:
         expanded_query = expand_query(query)
 
         # =======================
-        # FAISS
+        # FAISS SEARCH
         # =======================
         q_embedding = model.encode([expanded_query]).astype("float32")
         faiss.normalize_L2(q_embedding)
@@ -52,49 +51,86 @@ class HybridRetriever:
         scores, ids = index.search(q_embedding, top_k)
 
         # =======================
-        # BM25
+        # BM25 SEARCH
         # =======================
         tokenized_query = expanded_query.lower().split()
         bm25_scores = self.bm25.get_scores(tokenized_query)
 
-        # normalize BM25
-        bm25_scores = (bm25_scores - np.min(bm25_scores)) / (
-            np.max(bm25_scores) - np.min(bm25_scores) + 1e-8
-        )
+        if np.max(bm25_scores) != np.min(bm25_scores):
+            bm25_scores = (bm25_scores - np.min(bm25_scores)) / (
+                np.max(bm25_scores) - np.min(bm25_scores)
+            )
+        else:
+            bm25_scores = np.zeros_like(bm25_scores)
 
         # =======================
         # HYBRID MERGE
         # =======================
         hybrid_scores = {}
 
+        # 🔥 FAISS results
         for i, idx in enumerate(ids[0]):
-            hybrid_scores[idx] = 0.7 * scores[0][i]  # 🔥 stronger FAISS
 
-        for idx, score in enumerate(bm25_scores):
-            if idx in hybrid_scores:
-                hybrid_scores[idx] += 0.3 * score
+            if idx == -1:  # ✅ FIX (FAISS edge case)
+                continue
 
+            i_idx = int(idx)
+
+            if i_idx < len(self.chunks):
+                hybrid_scores[i_idx] = 0.7 * float(scores[0][i])
+
+        # 🔥 BM25 results
+        for i_idx, score in enumerate(bm25_scores):
+            if i_idx < len(self.chunks):
+                if i_idx in hybrid_scores:
+                    hybrid_scores[i_idx] += 0.3 * float(score)
+                else:
+                    hybrid_scores[i_idx] = 0.3 * float(score)
+
+        # =======================
+        # SORT RESULTS
+        # =======================
         sorted_results = sorted(hybrid_scores.items(), key=lambda x: x[1], reverse=True)
 
         # =======================
-        # OUTPUT
+        # FINAL FILTER + OUTPUT
         # =======================
         final_docs = []
         final_meta = []
 
         for idx, score in sorted_results:
+
+            if idx >= len(self.chunks):
+                continue
+
             doc = self.chunks[idx]
 
-            # 🔥 final safety filter
-            if len(doc.split()) < 40:
+            # 🔥 SOFTEN FILTER (FIX)
+            if len(doc.split()) < 10:
                 continue
 
             final_docs.append(doc)
-            final_meta.append(metadata[idx])
+
+            if idx < len(metadata):
+                final_meta.append(metadata[idx])
+            else:
+                final_meta.append({})
 
             if len(final_docs) >= top_k:
                 break
 
+        # 🔥 FALLBACK (CRITICAL FIX)
+        if not final_docs:
+            for idx, score in sorted_results[:top_k]:
+                i = int(idx)
+
+                if i < len(self.chunks):
+                    final_docs.append(self.chunks[i])
+                    final_meta.append(metadata[i] if i < len(metadata) else {})
+
+        # =======================
+        # CONFIDENCE
+        # =======================
         confidence = float(sorted_results[0][1]) if sorted_results else 0.0
 
         return final_docs, final_meta, confidence

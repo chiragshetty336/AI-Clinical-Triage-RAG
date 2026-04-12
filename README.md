@@ -6,7 +6,6 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![Flask](https://img.shields.io/badge/Flask-3.0+-orange.svg)](https://flask.palletsprojects.com)
 [![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-purple.svg)](https://ollama.ai)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -562,12 +561,6 @@ GEMINI_API_KEY=                       # For Gemini-based evaluation
 | Meditron echoes question | Prompt issue on low-acuity cases | Add "Never repeat the question" to system prompt |
 | `GROQ_API_KEY not set` | Missing .env | Add key to `.env` file |
 | RobertaModel warnings in terminal | BERTScore loading | Normal — these are just warnings, not errors |
-
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) file.
 
 ---
 

@@ -1,0 +1,130 @@
+{
+  "medical_triage_dataset": [
+    {
+      "query_id": "TRIAGE_001",
+      "query": "A 45-year-old male patient presents with sudden onset chest pain, shortness of breath, and diaphoresis. Vital signs: HR 110, BP 145/90, RR 22, SpO2 92%, Temperature 36.8°C. What is the triage assessment?",
+      "base_answer": "TRIAGE LEVEL: RED (EMERGENCY)\n\nCLINICAL REASONING:\nThis patient demonstrates classic signs of acute coronary syndrome (ACS):\n- Acute chest pain (suspicious for cardiac origin)\n- Autonomic symptoms (diaphoresis, shortness of breath)\n- Tachycardia (HR 110) - compensatory response\n- Hypertension (BP 145/90) - pain response\n- Tachypnea (RR 22) - respiratory distress\n- Mild hypoxemia (SpO2 92%)\n\nIMEDIATE ACTIONS:\n1. Activate chest pain protocol immediately\n2. Obtain 12-lead ECG within 10 minutes\n3. Establish IV access\n4. Cardiac troponin and BNP testing\n5. Chest X-ray\n6. Continuous cardiac monitoring\n7. Consider aspirin (if no contraindications)\n8. Notify cardiology/ICU\n9. Transport to PCI-capable center if available\n\nREASONING: The constellation of symptoms with hemodynamic changes and hypoxemia indicates life-threatening cardiac emergency requiring immediate intervention.",
+      "vital_signs": {
+        "heart_rate": 110,
+        "blood_pressure": "145/90",
+        "respiratory_rate": 22,
+        "oxygen_saturation": 92,
+        "temperature": 36.8
+      },
+      "symptoms": ["chest pain", "shortness of breath", "diaphoresis"],
+      "expected_triage": "RED",
+      "guideline_reference": "AHA/ACC Chest Pain Guidelines, STEMI Protocol"
+    },
+    {
+      "query_id": "TRIAGE_002",
+      "query": "A 28-year-old female patient comes with a 3-day history of cough, low-grade fever (38.2°C), and mild sore throat. Vital signs: HR 88, BP 118/76, RR 18, SpO2 98%. No respiratory distress. What is the appropriate triage level?",
+      "base_answer": "TRIAGE LEVEL: GREEN (ROUTINE)\n\nCLINICAL REASONING:\nThis presentation is consistent with acute upper respiratory infection (viral etiology likely):\n\nSUPPORTING FEATURES:\n- Gradual onset over 3 days (viral pattern)\n- Low-grade fever (38.2°C) - typical viral range\n- Upper respiratory symptoms (cough, sore throat)\n- Young, otherwise healthy patient\n- Vital signs stable and within normal limits\n- No respiratory distress\n- Adequate oxygen saturation (98%)\n- Normal heart rate and blood pressure\n\nCLINICAL ASSESSMENT:\n- Likely viral URI (common cold, influenza, or rhinovirus)\n- No signs of severe infection or complications\n- Self-limited condition in immunocompetent patient\n\nRECOMMENDED MANAGEMENT:\n1. Symptomatic treatment (rest, fluids, acetaminophen/ibuprofen)\n2. Monitor for danger signs (persistent high fever >3-4 days, severe dyspnea, altered mental status)\n3. Outpatient follow-up if symptoms worsen\n4. Consider antiviral if within treatment window for influenza\n5. Return precautions provided\n\nREASONING: Vital signs stable, no systemic toxicity, self-limited viral illness requiring supportive care only.",
+      "vital_signs": {
+        "heart_rate": 88,
+        "blood_pressure": "118/76",
+        "respiratory_rate": 18,
+        "oxygen_saturation": 98,
+        "temperature": 38.2
+      },
+      "symptoms": ["cough", "fever", "sore throat"],
+      "expected_triage": "GREEN",
+      "guideline_reference": "CDC Upper Respiratory Infection Guidelines"
+    },
+    {
+      "query_id": "TRIAGE_003",
+      "query": "A 67-year-old male with diabetes presents with persistent abdominal pain, nausea, and vomiting for 6 hours. Vital signs: HR 102, BP 138/88, RR 20, SpO2 96%, Temperature 37.5°C. Patient reports blood sugar is 450 mg/dL. What is the triage assessment?",
+      "base_answer": "TRIAGE LEVEL: YELLOW (URGENT)\n\nCLINICAL REASONING:\nThis patient presents with signs of hyperglycemic crisis (likely diabetic ketoacidosis or HHS):\n\nCRITICAL FINDINGS:\n- Severely elevated blood glucose (450 mg/dL) - diagnostic threshold exceeded\n- GI symptoms (nausea, vomiting) - metabolic derangement\n- Tachycardia (HR 102) - compensation for metabolic acidosis\n- Tachypnea (RR 20) - Kussmaul respiration pattern starting\n- Abdominal pain - may indicate DKA severity or other pathology\n- Age >60 with comorbidity (diabetes) - higher risk\n\nDIFFERENTIAL CONSIDERATIONS:\n1. Diabetic ketoacidosis (DKA)\n2. Hyperosmolar hyperglycemic state (HHS)\n3. Acute abdominal pathology (pancreatitis, appendicitis)\n\nURGENT ACTIONS:\n1. Establish IV access (2 large bore if possible)\n2. Stat labs:\n   - Venous/arterial blood gas (pH, HCO3-, pO2)\n   - Serum electrolytes (K+, Na+, Cl-)\n   - BUN/Creatinine (assess dehydration)\n   - Urinalysis with ketones\n   - Lactate\n3. Perform abdominal examination to rule out acute surgical pathology\n4. Initiate aggressive fluid resuscitation (0.9% NS)\n5. Continuous cardiac monitoring\n6. Monitor for complications (hyperkalemia with insulin therapy)\n7. Endocrine consultation\n8. Imaging if acute abdomen suspected\n\nTRIAGE RATIONALE: Not RED (currently stable hemodynamically) but requires urgent intervention within 30-60 minutes to prevent deterioration. Risk of rapid decompensation with potential for ICU admission.",
+      "vital_signs": {
+        "heart_rate": 102,
+        "blood_pressure": "138/88",
+        "respiratory_rate": 20,
+        "oxygen_saturation": 96,
+        "temperature": 37.5
+      },
+      "symptoms": ["abdominal pain", "nausea", "vomiting"],
+      "lab_values": {
+        "blood_glucose": "450 mg/dL"
+      },
+      "expected_triage": "YELLOW",
+      "guideline_reference": "ADA Diabetic Ketoacidosis Management Guidelines"
+    },
+    {
+      "query_id": "TRIAGE_004",
+      "query": "An 82-year-old female with history of falls presents with right hip pain after a fall from standing height. She reports she heard a crack and cannot bear weight. Vital signs: HR 96, BP 160/95, RR 16, SpO2 97%, Temperature 36.9°C. What is the appropriate triage?",
+      "base_answer": "TRIAGE LEVEL: YELLOW (URGENT)\n\nCLINICAL REASONING:\nThis patient has clinical indicators of hip fracture with age-related complications:\n\nKEY CLINICAL FEATURES:\n- Advanced age (82) - significantly increased operative risk\n- Mechanism of injury (fall from standing) - adequate force for fracture\n- Audible crack - suggests bone fracture\n- Inability to bear weight - functional indicator of fracture\n- Severe pain - consistent with fracture\n- Vital signs relatively stable (no shock)\n\nCOMPLICATION RISKS IN ELDERLY:\n1. Deep vein thrombosis (DVT) risk - immobility\n2. Pulmonary embolism (PE) risk\n3. Pressure ulcers - rapid onset with immobility\n4. Delirium from pain and stress\n5. Aspiration risk if sedated\n6. Perioperative cardiac event (elevated BP)\n\nURGENT MANAGEMENT PRIORITIES:\n1. Obtain hip/pelvis X-rays (confirm fracture, assess displacement)\n2. Immobilize hip (pillow between legs)\n3. Pain management (consider opioids - document baseline cognition)\n4. IV access and fluid resuscitation\n5. Pre-operative assessment:\n   - CBC, CMP, PT/INR, EKG\n   - Cardiac risk stratification (ASA score)\n   - Anesthesia consultation\n6. Orthopedic surgery consultation STAT\n7. Thromboembolism prophylaxis protocol\n8. NPO status pending surgery\n9. Infection prevention (antiseptic hip prep)\n\nHEMODYNAMIC NOTE: Elevated BP (160/95) may be pain-induced; recheck after pain control.\n\nTRIAGE RATIONALE: YELLOW (urgent but not immediate threat to life). Requires surgical intervention within 24-48 hours (ideally <24h to reduce complications). Not RED because vital signs stable, but delayed treatment increases morbidity and mortality.",
+      "vital_signs": {
+        "heart_rate": 96,
+        "blood_pressure": "160/95",
+        "respiratory_rate": 16,
+        "oxygen_saturation": 97,
+        "temperature": 36.9
+      },
+      "symptoms": ["hip pain", "inability to bear weight"],
+      "expected_triage": "YELLOW",
+      "guideline_reference": "American Geriatrics Society Hip Fracture Guidelines"
+    },
+    {
+      "query_id": "TRIAGE_005",
+      "query": "A 5-year-old child is brought by parents with high fever (40.2°C), neck stiffness, headache, and a characteristic petechial rash on trunk and legs. Vital signs: HR 115 (elevated for age), RR 28, BP 88/55, SpO2 95%. Patient appears ill. What is the triage assessment?",
+      "base_answer": "TRIAGE LEVEL: RED (CRITICAL EMERGENCY)\n\nCLINICAL REASONING:\nThis presentation is HIGHLY SUSPICIOUS for bacterial meningitis/meningococcemia:\n\nCRITICAL RED FLAGS:\n1. Classic meningitis triad: fever + neck stiffness + headache\n2. Petechial rash - indicates septicemia/meningococcemia\n3. High fever (40.2°C) - suggestive of bacterial infection\n4. Hemodynamic instability signs:\n   - Tachycardia (HR 115 - significantly elevated for age)\n   - Tachypnea (RR 28 - elevated for age)\n   - Relative hypotension (88/55) - early septic shock\n5. Toxic appearance - severe systemic illness\n6. Age group (5 years) - increased risk for meningitis\n\nPATHOPHYSIOLOGY:\n- Bacterial meningitis has 20-30% mortality if untreated\n- Meningococcemia can progress to fulminant sepsis in hours\n- Petechiae indicate disseminated intravascular coagulation (DIC) risk\n- Hemodynamic instability suggests septic shock development\n\nLIFE-THREATENING COMPLICATION RISKS:\n- Septic shock\n- Increased intracranial pressure with herniation\n- DIC with multi-organ failure\n- Death within 24 hours if untreated\n\nIMMEDIATE CRITICAL ACTIONS:\n1. ACTIVATE SEPSIS PROTOCOL IMMEDIATELY\n2. Place on continuous monitoring (cardiac, SpO2, BP)\n3. Establish large-bore IV access (consider central line)\n4. INITIATE EMPIRIC ANTIBIOTICS WITHIN 30 MINUTES:\n   - Ceftriaxone 80 mg/kg/day divided Q6H (max 4g/day)\n   - PLUS Vancomycin 15 mg/kg/dose Q6H (ensure CNS penetration)\n   - PLUS Ampicillin 50 mg/kg/dose Q6H (coverage for Listeria)\n   - Consider dexamethasone with/before antibiotics\n5. Aggressive fluid resuscitation:\n   - Start 20 mL/kg 0.9% NS bolus rapidly\n   - Goal: restore perfusion, target BP for age\n6. Blood cultures x2 (before antibiotics if possible, but DON'T delay abx)\n7. Stat labs:\n   - CBC with differential\n   - CMP, LFTs, PT/PTT\n   - Blood glucose (monitor for hyperglycemia)\n   - Lactate (assess tissue perfusion)\n   - Consider DIC panel\n8. Lumbar puncture AFTER CT head (if no signs of elevated ICP):\n   - CSF: glucose, protein, cell count/diff, Gram stain, culture\n   - PCR for meningitis panel if available\n9. CT head or MRI to assess for hydrocephalus, ventriculitis\n10. Vasopressor support if hypotensive despite fluids\n11. ICU admission\n12. Chemoprophylaxis for contacts\n13. Report to public health authority\n\nNURSING CONSIDERATIONS:\n- Droplet precautions until 24h post-antibiotics\n- Strict infection control\n- Monitor for DIC bleeding\n- Frequent neurologic checks (pupils, GCS, focal deficits)\n- Temperature control (avoid hyperthermia)\n\nPROGNOSTIC FACTORS:\n- Early recognition and treatment = significantly improved outcomes\n- Delay in antibiotics = higher mortality and neurologic sequelae\n\nTRIAGE RATIONALE: RED (CRITICAL) - This is a medical emergency requiring immediate intensive intervention. Potential for rapid deterioration and death. Every minute of delay increases mortality risk. This patient requires immediate resuscitation and ICU-level care.",
+      "vital_signs": {
+        "heart_rate": 115,
+        "respiratory_rate": 28,
+        "blood_pressure": "88/55",
+        "oxygen_saturation": 95,
+        "temperature": 40.2
+      },
+      "symptoms": ["fever", "neck stiffness", "headache", "petechial rash", "toxic appearance"],
+      "age": "5 years old",
+      "expected_triage": "RED",
+      "guideline_reference": "AAP Bacterial Meningitis Guidelines, Pediatric Sepsis Protocol"
+    },
+    {
+      "query_id": "TRIAGE_006",
+      "query": "A 34-year-old female at 28 weeks gestation presents with sudden severe headache, upper right quadrant abdominal pain, and blurred vision. Vital signs: HR 92, BP 165/105 (baseline 120/80), RR 18, SpO2 98%, Temperature 37.1°C. Patient has history of gestational hypertension. What is the triage assessment?",
+      "base_answer": "TRIAGE LEVEL: RED (CRITICAL - OBSTETRIC EMERGENCY)\n\nCLINICAL REASONING:\nThis presentation is HIGHLY SUSPICIOUS for severe preeclampsia with imminent eclampsia:\n\nCRITICAL DIAGNOSTIC FEATURES:\n1. SEVERE HYPERTENSION: BP 165/105 (>160/110 systolic/diastolic = severe range)\n2. CLASSIC PREECLAMPSIA SYMPTOMS:\n   - Severe headache - sign of cerebral edema\n   - Right upper quadrant pain - hepatic capsular distension (HELLP syndrome)\n   - Blurred vision - retinal vasospasm/edema (visual obscurations)\n3. MATERNAL-FETAL RISK FACTORS:\n   - Gestational age 28 weeks - viable but extremely premature\n   - Prior gestational hypertension - predisposition\n   - Maternal age 34 - increased risk\n\nCOMPLICATION RISKS:\n- ECLAMPSIA: Seizures, permanent neurologic damage, death\n- HELLP SYNDROME: Hemolysis, elevated liver enzymes, low platelets (DIC risk)\n- PLACENTAL ABRUPTION: Fetal loss, maternal hemorrhage\n- ACUTE KIDNEY INJURY: Proteinuria may progress to renal failure\n- PULMONARY EDEMA: From fluid overload or cardiac dysfunction\n- FETAL COMPLICATIONS: Growth restriction, intrauterine demise, prematurity\n\nWARNING SIGNS OF ECLAMPSIA:\n- Headache (present ✓)\n- Visual symptoms (present ✓)\n- Epigastric pain (present ✓)\n- Altered mental status\n- Seizure activity\n\nUTERO-PLACENTAL COMPLICATIONS:\n- Placental insufficiency - decreased fetal perfusion\n- Abruption risk - especially with hypertensive emergency\n- Preterm delivery indication\n\nIMMEDIATE CRITICAL ACTIONS:\n1. OBSTETRIC EMERGENCY - Activate high-risk labor & delivery team\n2. Place on continuous fetal monitoring (dual monitor: maternal + fetal)\n3. Establish large-bore IV access (peripheral 18G minimum)\n4. IMMEDIATE ANTIHYPERTENSIVE THERAPY (goal BP 140-150 systolic within 1h):\n   - IV labetalol 20 mg bolus, then 40-80 mg Q10min max 220 mg\n   - OR IV hydralazine 5-10 mg Q20min (max 30 mg per episode)\n   - Avoid ACE inhibitors (teratogenic in 2nd trimester)\n5. SEIZURE PROPHYLAXIS - Load magnesium sulfate:\n   - 4-6 g IV loading dose over 20-30 minutes\n   - Followed by 1-2 g/hour maintenance\n   - Monitor reflexes, respiratory rate, urine output\n   - Have calcium gluconate available for reversal\n6. Stat laboratory evaluation:\n   - CBC with differential (platelet count - assess for DIC)\n   - CMP (creatinine, AST/ALT, albumin)\n   - PT/PTT/INR (coagulation)\n   - LDH (hemolysis marker)\n   - Blood glucose\n   - 24-hour urine protein (or spot protein/creatinine)\n   - Consider blood smear for schistocytes\n7. Immediate obstetric ultrasound:\n   - Confirm fetal heart rate and viability\n   - Amniotic fluid volume\n   - Umbilical artery Doppler (assess placental function)\n   - Assess for placental abruption\n8. Prepare for DELIVERY (definitive treatment):\n   - Corticosteroids (betamethasone 12 mg IM x2 for fetal lung maturity) - start immediately\n   - Delivery indicated to prevent maternal eclampsia\n   - Route: vaginal vs cesarean based on fetal status and cervical findings\n   - Likely requires urgent cesarean if fetal distress or eclampsia develops\n9. Transfer to tertiary center if not available\n10. Prepare NICU for extremely premature infant (28 weeks)\n\nMONITORING PARAMETERS:\n- Continuous BP monitoring (q15min initially)\n- Maternal vital signs\n- Fetal heart rate patterns (reassuring vs non-reassuring)\n- Reflexes and respiratory status (magnesium toxicity signs)\n- Urine output goal >30 mL/hour\n- Seizure precautions (quiet room, side rails, suction available)\n\nFETAL CONSIDERATIONS:\n- Extreme prematurity (28 weeks) has ~80% survival with NICU support\n- Preeclampsia treatment may worsen fetal growth restriction\n- Delivery may be only option to prevent maternal death\n- Coordinate with neonatology team for resuscitation planning\n\nLONG-TERM IMPLICATIONS:\n- Early delivery requires NICU admission\n- Increased risk of neonatal complications (RDS, IVH, NEC)\n- Maternal recovery monitoring for postpartum eclampsia (continues 48h postpartum)\n- Long-term hypertension screening\n\nTRIAGE RATIONALE: RED (CRITICAL) - Life-threatening emergency for both mother and fetus. Risk of eclamptic seizures with permanent neurologic damage or death. Requires immediate intensive obstetric intervention and delivery. Every minute of delay increases catastrophic outcome risk.",
+      "vital_signs": {
+        "heart_rate": 92,
+        "blood_pressure": "165/105",
+        "respiratory_rate": 18,
+        "oxygen_saturation": 98,
+        "temperature": 37.1
+      },
+      "symptoms": ["severe headache", "upper right quadrant pain", "blurred vision"],
+      "pregnancy_details": {
+        "gestational_age": "28 weeks",
+        "history": "gestational hypertension"
+      },
+      "expected_triage": "RED",
+      "guideline_reference": "ACOG Preeclampsia Guidelines, ACOG Severe Features Criteria"
+    },
+    {
+      "query_id": "TRIAGE_007",
+      "query": "A 42-year-old man with no significant past medical history comes to ED with 2 hours of severe right lower quadrant pain, nausea, and low-grade fever (38.1°C). Vital signs: HR 88, BP 122/78, RR 16, SpO2 99%, Temperature 38.1°C. Rebound and guarding present on examination. What is the triage assessment?",
+      "base_answer": "TRIAGE LEVEL: YELLOW (URGENT)\n\nCLINICAL REASONING:\nThis presentation is HIGHLY SUSPICIOUS for acute appendicitis:\n\nCLINICAL DIAGNOSTIC FINDINGS:\n1. CLASSIC RLQ PAIN - classic appendicitis location\n2. PERITONEAL SIGNS: Rebound and guarding present - indicates inflammation\n3. CONSTITUTIONAL SYMPTOMS:\n   - Low-grade fever (38.1°C) - inflammatory response\n   - Nausea - visceral pain response or mild peritoneal irritation\n4. ACUTE ONSET (2 hours) - typical appendicitis timeline\n5. VITAL SIGNS RELATIVELY STABLE - no septic shock (yet)\n\nDIAGNOSTIC CONSIDERATIONS:\nDifferential diagnosis includes:\n- Acute appendicitis (MOST LIKELY)\n- Mesenteric adenitis\n- Inflammatory bowel disease (less likely - acute presentation)\n- Ovarian pathology (not applicable - male patient)\n- Diverticulitis (less common at age 42)\n- Small bowel obstruction (but pain location and presentation less typical)\n\nCOMPLICATION RISKS:\n- Perforation with peritonitis (if delayed >24-48 hours)\n- Septic shock from perforation\n- Abscess formation\n- Fecal peritonitis\n- Multi-organ failure if sepsis develops\n\nURGENT MANAGEMENT:\n1. NPO status (nothing by mouth) - likely surgical candidate\n2. Establish IV access\n3. Stat imaging:\n   - CT abdomen/pelvis with IV contrast (gold standard for appendicitis diagnosis)\n   - Sensitivity ~97%, specificity ~98%\n   - If CT inconclusive or unavailable: abdominal ultrasound\n4. Laboratory studies:\n   - CBC with differential (elevated WBC expected)\n   - CMP (electrolytes, renal function)\n   - Lactate (if sepsis concern)\n   - Pregnancy test if female (rule out gynecologic pathology)\n5. Pain management (analgesics do NOT delay diagnosis with CT)\n6. Surgical consultation - STAT if imaging confirms appendicitis\n7. Fluid resuscitation (typically mild dehydration from vomiting)\n8. Antibiotic initiation if surgery planned:\n   - Broad-spectrum coverage for gram-negative and anaerobes\n   - Typically: ceftriaxone + metronidazole OR single agent like ertapenem\n\nINDICATIONS FOR EMERGENT SURGERY:\n- Imaging confirms acute appendicitis\n- Clinical deterioration (increasing pain, signs of perforation)\n- Elevated lactate suggesting tissue ischemia\n- Evidence of localized or generalized peritonitis\n\nSURGICAL OPTIONS:\n- Laparoscopic appendectomy (preferred if no diffuse peritonitis)\n- Open appendectomy if complex case\n- Interval appendectomy if abscess formation with fever resolution\n\nTRIAGE RATIONALE: YELLOW (URGENT) - Requires surgical intervention but currently stable. Not RED because vital signs normal and no signs of septic shock or peritoneal perforation yet. However, delayed treatment significantly increases complications. Target: surgery within 6-8 hours of presentation.",
+      "vital_signs": {
+        "heart_rate": 88,
+        "blood_pressure": "122/78",
+        "respiratory_rate": 16,
+        "oxygen_saturation": 99,
+        "temperature": 38.1
+      },
+      "symptoms": ["right lower quadrant pain", "nausea", "fever"],
+      "physical_exam": ["rebound", "guarding"],
+      "expected_triage": "YELLOW",
+      "guideline_reference": "American College of Surgeons Acute Appendicitis Guidelines"
+    }
+  ],
+  "usage_instructions": {
+    "query_format": "Use the 'query' field for the patient presentation",
+    "base_answer_usage": "Compare model outputs against 'base_answer' field",
+    "vital_signs": "Include in RAG context when available",
+    "expected_outcome": "Models should match 'expected_triage' level",
+    "grading_criteria": {
+      "perfect": "Exact triage match with supporting evidence from guidelines",
+      "good": "Correct triage level with mostly accurate reasoning",
+      "fair": "Correct triage but incomplete reasoning or missed key features",
+      "poor": "Incorrect triage level or dangerous clinical reasoning"
+    }
+  }
+}
